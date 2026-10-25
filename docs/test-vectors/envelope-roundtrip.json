@@ -1,0 +1,84 @@
+{
+  "note": "Ten payloads. encrypt -> decrypt must deep-equal the input. Fixed key and IV make the envelopes deterministic; this is the round-trip fixture, not a KDF test.",
+  "key_hex": "3f2a1b0c4d5e6f708192a3b4c5d6e7f8091a2b3c4d5e6f708192a3b4c5d6e7f8",
+  "vectors": [
+    {
+      "name": "text-simple",
+      "iv_hex": "000102030405060708090a0b",
+      "payload": { "type": "text", "text": "Ship the relay before the weekend." }
+    },
+    {
+      "name": "url-with-title",
+      "iv_hex": "101112131415161718191a1b",
+      "payload": {
+        "type": "url",
+        "url": "https://engineering.example.com/distributed-locks-redis",
+        "title": "Distributed locks with Redis"
+      }
+    },
+    {
+      "name": "url-no-title",
+      "iv_hex": "202122232425262728292a2b",
+      "payload": { "type": "url", "url": "https://example.com/notes/2026-goals" }
+    },
+    {
+      "name": "text-with-source",
+      "iv_hex": "303132333435363738393a3b",
+      "payload": {
+        "type": "text",
+        "text": "A lock without a lease is a deadlock waiting for a restart.",
+        "url": "https://news.ycombinator.com/item?id=12345",
+        "title": "Show HN: Distributed lock service"
+      }
+    },
+    {
+      "name": "screenshot-with-thumbnail",
+      "iv_hex": "404142434445464748494a4b",
+      "payload": {
+        "type": "screenshot",
+        "title": "LinkedIn post about distributed locks",
+        "ocr_text": "Fencing tokens are the part everyone forgets when they build a distributed lock.",
+        "thumbnail_b64": "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=="
+      }
+    },
+    {
+      "name": "text-unicode",
+      "iv_hex": "505152535455565758595a5b",
+      "payload": { "type": "text", "text": "Réunion demain à 9h — 日本語のメモ 🚀" }
+    },
+    {
+      "name": "screenshot-empty-ocr",
+      "iv_hex": "606162636465666768696a6b",
+      "payload": {
+        "type": "screenshot",
+        "ocr_text": "",
+        "thumbnail_b64": "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=="
+      }
+    },
+    {
+      "name": "text-long",
+      "iv_hex": "707172737475767778797a7b",
+      "payload": {
+        "type": "text",
+        "text": "Recall keeps a local encrypted index on every device. The relay only ever sees opaque envelope JSON: a version, a base64 IV, and base64 ciphertext with the GCM tag appended. There is no title, no URL, no OCR text and no thumbnail in D1 or R2 metadata. Search runs against the local SQLite FTS5 index with BM25 ranking, a 180-day recency half-life, synonym expansion loaded from a runtime-editable file, and a fuzzy LIKE fallback that guarantees the UI never shows a blank screen. Old items sync in when the device reconnects; recent items are searchable with no network at all."
+      }
+    },
+    {
+      "name": "url-with-query-and-unicode",
+      "iv_hex": "808182838485868788898a8b",
+      "payload": {
+        "type": "url",
+        "url": "https://example.com/search?q=distributed+locks&lang=ja&utm_source=recall",
+        "title": "検索結果 — distributed locks"
+      }
+    },
+    {
+      "name": "text-with-control-characters",
+      "iv_hex": "909192939495969798999a9b",
+      "payload": {
+        "type": "text",
+        "text": "line one\nline two\ttabbed \"quoted\" and backslash \\ and a null-free control \u0001 byte"
+      }
+    }
+  ]
+}

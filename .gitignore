@@ -1,0 +1,24 @@
+node_modules/
+dist/
+build/
+out/
+.wrangler/
+.env
+.env.local
+.dev.vars
+.env.*.local
+*.tsbuildinfo
+# Generated relay defaults contain the shared relay secret.
+apps/desktop/src/lib/relay-defaults.ts
+apps/chrome-ext/src/lib/relay-defaults.ts
+apps/android/app/src/main/java/com/recall/app/config/RelayDefaults.kt
+coverage/
+.DS_Store
+apps/android/.gradle/
+apps/android/app/build/
+apps/android/local.properties
+apps/android/keystore.properties
+apps/android/keystore/
+apps/android/*.jks
+apps/android/*.keystore
+!apps/android/build/.gitkeep

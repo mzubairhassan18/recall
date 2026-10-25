@@ -1,0 +1,42 @@
+{
+  "note": "AES-256-GCM NIST/McGrew-Viega test cases 13, 14 and 15 (case 15 exercises AAD). Case 16 is an extra non-zero vector with a 96-bit IV and no AAD, frozen from OpenSSL. Tag is stored separately here; the wire format appends it to ct.",
+  "cipher": "AES-256-GCM",
+  "vectors": [
+    {
+      "name": "nist-aes256-gcm-tc13-empty",
+      "key_hex": "0000000000000000000000000000000000000000000000000000000000000000",
+      "iv_hex": "000000000000000000000000",
+      "plaintext_hex": "",
+      "aad_hex": "",
+      "ciphertext_hex": "",
+      "tag_hex": "530f8afbc74536b9a963b4f1c4cb738b"
+    },
+    {
+      "name": "nist-aes256-gcm-tc14-one-block",
+      "key_hex": "0000000000000000000000000000000000000000000000000000000000000000",
+      "iv_hex": "000000000000000000000000",
+      "plaintext_hex": "00000000000000000000000000000000",
+      "aad_hex": "",
+      "ciphertext_hex": "cea7403d4d606b6e074ec5d3baf39d18",
+      "tag_hex": "d0d1c8a799996bf0265b98b5d48ab919"
+    },
+    {
+      "name": "nist-aes256-gcm-tc15-aad",
+      "key_hex": "feffe9928665731c6d6a8f9467308308feffe9928665731c6d6a8f9467308308",
+      "iv_hex": "cafebabefacedbaddecaf888",
+      "plaintext_hex": "d9313225f88406e5a55909c5aff5269a86a7a9531534f7da2e4c303d8a318a721c3c0c95956809532fcf0e2449a6b525b16aedf5aa0de657ba637b39",
+      "aad_hex": "feedfacedeadbeeffeedfacedeadbeefabaddad2",
+      "ciphertext_hex": "522dc1f099567d07f47f37a32a84427d643a8cdcbfe5c0c97598a2bd2555d1aa8cb08e48590dbb3da7b08b1056828838c5f61e6393ba7a0abcc9f662",
+      "tag_hex": "76fc6ece0f4e1768cddf8853bb2d551b"
+    },
+    {
+      "name": "openssl-aes256-gcm-12byte-iv",
+      "key_hex": "8f1c2d3e4a5b6c7d8e9fa0b1c2d3e4f5061728394a5b6c7d8e9fa0b1c2d3e4f5",
+      "iv_hex": "0102030405060708090a0b0c",
+      "plaintext_hex": "526563616c6c20776972652d666f726d61742066697874757265207061796c6f61642e",
+      "aad_hex": "",
+      "ciphertext_hex": "f82e8fbb21e0d1ad179109c65223543f83724534233734a369e3ce246b6a512b28a1d4",
+      "tag_hex": "273be3048bcc7dc8a26da73a5f2fe2af"
+    }
+  ]
+}

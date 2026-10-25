@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.Recall" parent="Theme.AppCompat.DayNight.NoActionBar">
+        <item name="android:windowBackground">@color/recall_bg</item>
+        <item name="android:statusBarColor">@color/recall_bg</item>
+        <item name="android:navigationBarColor">@color/recall_bg</item>
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:colorAccent">@color/recall_accent</item>
+    </style>
+
+    <style name="Theme.Recall.Transparent" parent="Theme.Recall">
+        <item name="android:windowIsTranslucent">true</item>
+        <item name="android:windowBackground">@android:color/transparent</item>
+        <item name="android:windowNoTitle">true</item>
+        <item name="android:backgroundDimEnabled">false</item>
+        <item name="android:windowAnimationStyle">@null</item>
+    </style>
+</resources>

@@ -1,0 +1,30 @@
+#:schema node_modules/wrangler/config-schema.json
+name = "recall-relay"
+main = "src/index.ts"
+compatibility_date = "2025-06-01"
+workers_dev = true
+preview_urls = false
+
+# The relay stores ciphertext only. There is no plaintext column anywhere.
+#
+# Setup (once, in your Cloudflare account):
+#   pnpm exec wrangler d1 create recall-meta  -> copy database_id below
+#   pnpm exec wrangler r2 bucket create recall-blobs
+#   pnpm exec wrangler secret put RELAY_SECRET
+#
+# The committed database_id is the deployed `recall-meta` database. For a fresh
+# account, replace it with the id returned by `wrangler d1 create`.
+# `wrangler dev --local` never contacts Cloudflare.
+
+[[d1_databases]]
+binding = "DB"
+database_name = "recall-meta"
+database_id = "bc653abe-09e5-4b4f-825f-b28f89ca6421"
+migrations_dir = "migrations"
+
+[[r2_buckets]]
+binding = "BLOBS"
+bucket_name = "recall-blobs"
+
+[observability]
+enabled = false

@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="recall_bg">#0F1115</color>
+    <color name="recall_panel">#171A21</color>
+    <color name="recall_accent">#6EA8FE</color>
+    <color name="recall_accent_deep">#3B5BDB</color>
+    <color name="recall_text">#E7E9EE</color>
+    <color name="recall_muted">#98A0AF</color>
+    <color name="recall_danger">#FF6B6B</color>
+    <color name="ic_launcher_background">#3B5BDB</color>
+</resources>

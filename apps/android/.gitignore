@@ -1,0 +1,6 @@
+# Local signing material — never commit the real keystore or passwords.
+keystore/
+keystore.properties
+build/
+.gradle/
+local.properties

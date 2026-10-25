@@ -1,0 +1,24 @@
+{
+  "name": "@recall/chrome-ext",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node build.mjs",
+    "dev": "node build.mjs --watch",
+    "test": "vitest run",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@recall/crypto-core": "workspace:*",
+    "@recall/search-core": "workspace:*",
+    "@recall/shared-types": "workspace:*",
+    "@sqlite.org/sqlite-wasm": "3.54.1-build1"
+  },
+  "devDependencies": {
+    "@types/chrome": "^0.1.27",
+    "esbuild": "^0.25.11",
+    "typescript": "^5.9.3",
+    "vitest": "^3.2.4"
+  }
+}

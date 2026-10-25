@@ -1,0 +1,10 @@
+<resources>
+    <string name="app_name">Recall</string>
+    <string name="widget_title">Recall</string>
+    <string name="widget_locked">Unlock Recall to see your memory</string>
+    <string name="widget_empty">Nothing captured yet</string>
+    <string name="notification_channel_capture">Screenshot proposals</string>
+    <string name="notification_channel_sync">Sync</string>
+    <string name="screenshot_save">Save</string>
+    <string name="screenshot_dismiss">Dismiss</string>
+</resources>

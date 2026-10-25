@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Recall</title>
+    <link rel="stylesheet" href="popup.css" />
+  </head>
+  <body>
+    <div id="app">
+      <header>
+        <div class="brand">
+          <span class="logo">R</span>
+          <div>
+            <h1>Recall</h1>
+            <p id="tagline">Your encrypted memory</p>
+          </div>
+        </div>
+        <span id="mode-pill" class="pill" hidden></span>
+      </header>
+
+      <section id="setup-panel" hidden>
+        <h2>Set up this device</h2>
+        <p class="hint">
+          One passphrase encrypts everything. There is no recovery — store it in a password
+          manager and on paper.
+        </p>
+        <form id="setup-form" autocomplete="off">
+          <label>Data passphrase
+            <input id="setup-passphrase" type="password" required minlength="8" placeholder="4–6 diceware words" />
+          </label>
+          <p class="hint relay-note">Encrypted sync is on. The relay stores ciphertext only.</p>
+          <button type="submit" id="setup-submit">Create encrypted store</button>
+          <p id="setup-error" class="error" hidden></p>
+        </form>
+      </section>
+
+      <section id="unlock-panel" hidden>
+        <h2>Unlock</h2>
+        <form id="unlock-form" autocomplete="off">
+          <label>Data passphrase
+            <input id="unlock-passphrase" type="password" required autofocus placeholder="your passphrase" />
+          </label>
+          <button type="submit" id="unlock-submit">Unlock</button>
+          <p id="unlock-error" class="error" hidden></p>
+        </form>
+        <p class="hint" id="unlock-meta"></p>
+      </section>
+
+      <section id="main-panel" hidden>
+        <div class="tabs" role="tablist">
+          <button id="tab-search" class="tab active" role="tab">Search</button>
+          <button id="tab-timeline" class="tab" role="tab">Timeline</button>
+        </div>
+
+        <div class="search-row">
+          <input id="search" type="search" placeholder="Search your memory…" autocomplete="off" />
+        </div>
+
+        <div id="filters" class="filters" hidden>
+          <select id="filter-type" aria-label="Filter by type">
+            <option value="">All types</option>
+            <option value="text">Text</option>
+            <option value="url">Links</option>
+            <option value="screenshot">Screenshots</option>
+          </select>
+          <input id="filter-domain" type="search" placeholder="domain" aria-label="Filter by domain" />
+        </div>
+
+        <ul id="results" aria-live="polite"></ul>
+        <p id="empty" class="empty" hidden>No captures yet. Select text on a page and choose “Save to Recall”.</p>
+
+        <footer>
+          <button id="save-page" title="Save the active page">Save page</button>
+          <button id="sync-now" title="Sync with the relay">Sync</button>
+          <button id="lock" title="Forget the key until next unlock">Lock</button>
+          <span id="sync-info" class="sync-info"></span>
+        </footer>
+      </section>
+
+      <div id="detail" class="detail" hidden>
+        <div class="detail-card">
+          <button id="detail-close" class="detail-close" aria-label="Close">×</button>
+          <h2 id="detail-title"></h2>
+          <p id="detail-meta" class="meta"></p>
+          <img id="detail-image" alt="" hidden />
+          <pre id="detail-text"></pre>
+        </div>
+      </div>
+    </div>
+    <script type="module" src="popup/main.js"></script>
+  </body>
+</html>

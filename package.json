@@ -1,0 +1,36 @@
+{
+  "name": "recall",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Capture anything in one gesture. Encrypted, synced, searchable everywhere.",
+  "packageManager": "pnpm@10.17.1",
+  "engines": {
+    "node": ">=20.11"
+  },
+  "scripts": {
+    "test": "pnpm -r --if-present test",
+    "test:shared-types": "pnpm --filter @recall/shared-types test",
+    "test:crypto-core": "pnpm --filter @recall/crypto-core test",
+    "test:search-core": "pnpm --filter @recall/search-core test",
+    "test:chrome-ext": "pnpm --filter @recall/chrome-ext test",
+    "test:desktop": "pnpm --filter @recall/desktop test",
+    "test:relay": "pnpm --filter @recall/relay test",
+    "typecheck": "pnpm -r --if-present typecheck",
+    "build": "pnpm -r --if-present build",
+    "fixtures:verify": "tsx scripts/verify-fixtures.mjs",
+    "parity": "tsx scripts/crypto-parity.mjs",
+    "relay:defaults": "node scripts/generate-relay-defaults.mjs",
+    "relay:smoke": "node scripts/relay-smoke.mjs",
+    "relay:dev": "pnpm --filter @recall/relay dev",
+    "export:backup": "tsx scripts/export-backup.mjs"
+  },
+  "devDependencies": {
+    "@recall/crypto-core": "workspace:*",
+    "@recall/search-core": "workspace:*",
+    "@recall/shared-types": "workspace:*",
+    "@types/node": "^24.10.1",
+    "tsx": "^4.20.6",
+    "typescript": "^5.9.3",
+    "vitest": "^3.2.4"
+  }
+}

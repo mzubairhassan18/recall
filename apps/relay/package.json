@@ -1,0 +1,22 @@
+{
+  "name": "@recall/relay",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev --local --port 8787",
+    "deploy": "wrangler deploy",
+    "test": "node ../../scripts/relay-smoke.mjs",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "migrate:local": "wrangler d1 migrations apply recall-meta --local",
+    "migrate:remote": "wrangler d1 migrations apply recall-meta --remote"
+  },
+  "dependencies": {
+    "@recall/shared-types": "workspace:*"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20251011.0",
+    "typescript": "^5.9.3",
+    "wrangler": "^4.152.0"
+  }
+}

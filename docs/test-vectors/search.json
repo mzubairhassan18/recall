@@ -1,0 +1,430 @@
+{
+  "note": "Deterministic search fixtures. `now` is fixed; the corpus is shared by every case. expected_top3_ids were produced by the reference in-memory BM25 adapter (packages/search-core/src/memory-adapter.ts) and manually reviewed for semantic correctness.",
+  "now": 1767225600000,
+  "corpus": [
+    {
+      "id": "c01",
+      "created_at": 1767218400000,
+      "type": "text",
+      "title": "Distributed locks with Redis",
+      "text": "A practical guide to distributed locking using Redis, covering mutex safety and lease expiry.",
+      "url": "https://engineering.example.com/distributed-locks-redis"
+    },
+    {
+      "id": "c02",
+      "created_at": 1764633600000,
+      "type": "text",
+      "title": "Distributed systems reading list",
+      "text": "Papers on consensus, replication and sharding. Raft, Paxos and quorum systems."
+    },
+    {
+      "id": "c03",
+      "created_at": 1732665600000,
+      "type": "text",
+      "title": "Mutex vs semaphore",
+      "text": "When to use a mutex, when a semaphore, and why a mutex is not a lock across processes."
+    },
+    {
+      "id": "c04",
+      "created_at": 1766966400000,
+      "type": "text",
+      "title": "PostgreSQL index tuning",
+      "text": "How B-tree indexes work in PostgreSQL and when a sequential scan is faster.",
+      "url": "https://example.com/postgres-index-tuning"
+    },
+    {
+      "id": "c05",
+      "created_at": 1749945600000,
+      "type": "text",
+      "title": "Postgres query planner deep dive",
+      "text": "Reading EXPLAIN ANALYZE output for PostgreSQL queries."
+    },
+    {
+      "id": "c06",
+      "created_at": 1767139200000,
+      "type": "screenshot",
+      "title": "Screenshot",
+      "ocr_text": "Fencing tokens are the part everyone forgets when they build a distributed lock. Notes from a LinkedIn post."
+    },
+    {
+      "id": "c07",
+      "created_at": 1766793600000,
+      "type": "text",
+      "title": "Kubernetes pod scheduling",
+      "text": "How the kube-scheduler places pods on nodes, taints and tolerations."
+    },
+    {
+      "id": "c08",
+      "created_at": 1732665600000,
+      "type": "text",
+      "title": "Rust ownership explained",
+      "text": "Borrowing, lifetimes and the borrow checker."
+    },
+    {
+      "id": "c09",
+      "created_at": 1766361600000,
+      "type": "text",
+      "title": "Rust async runtimes compared",
+      "text": "Tokio vs async-std, futures and executors."
+    },
+    {
+      "id": "c10",
+      "created_at": 1762041600000,
+      "type": "text",
+      "title": "The article about sharding",
+      "text": "A writeup on sharding Postgres with Citus. Shard keys and rebalancing."
+    },
+    {
+      "id": "c11",
+      "created_at": 1704153600000,
+      "type": "text",
+      "title": "Coffee brewing ratios",
+      "text": "Espresso and pour-over ratios, grind size, water temperature."
+    },
+    {
+      "id": "c12",
+      "created_at": 1672185600000,
+      "type": "text",
+      "title": "Sourdough starter guide",
+      "text": "Feeding schedule and hydration for a healthy starter."
+    },
+    {
+      "id": "c13",
+      "created_at": 1735689600000,
+      "type": "url",
+      "title": "CA DMV appointment",
+      "url": "https://dmv.ca.gov/appointment",
+      "text": "Renew license, bring proof of insurance."
+    },
+    {
+      "id": "c14",
+      "created_at": 1672185600000,
+      "type": "text",
+      "title": "Meeting notes: Q3 planning",
+      "text": "Roadmap, milestones, owners and deadlines."
+    },
+    {
+      "id": "c15",
+      "created_at": 1724025600000,
+      "type": "text",
+      "title": "Distributed locks with Redis",
+      "text": "Distributed locking with Redis: mutex, lease, fencing tokens and clock skew.",
+      "url": "https://engineering.example.com/distributed-locks-redis-old"
+    },
+    {
+      "id": "c16",
+      "created_at": 1766620800000,
+      "type": "text",
+      "title": "SQLite FTS5 tokenizer notes",
+      "text": "unicode61 tokenizer, porter stemming, external content tables, bm25 ranking."
+    },
+    {
+      "id": "c17",
+      "created_at": 1765497600000,
+      "type": "text",
+      "title": "Encryption at rest with AES-GCM",
+      "text": "Key derivation with PBKDF2, 12-byte IVs, authentication tags."
+    },
+    {
+      "id": "c18",
+      "created_at": 1763337600000,
+      "type": "text",
+      "title": "Cloudflare Workers limits",
+      "text": "CPU time, subrequests, R2 and D1 free tier limits."
+    },
+    {
+      "id": "c19",
+      "created_at": 1698105600000,
+      "type": "text",
+      "title": "semaphore implementation in Go",
+      "text": "Buffered channels as counting semaphores, context cancellation."
+    },
+    {
+      "id": "c20",
+      "created_at": 1594425600000,
+      "type": "text",
+      "title": "notes about the mutex",
+      "text": "Mutexes, spinlocks and priority inversion."
+    },
+    {
+      "id": "c21",
+      "created_at": 1765929600000,
+      "type": "text",
+      "title": "Python asyncio pitfalls",
+      "text": "Blocking the event loop, task cancellation, gather vs wait."
+    },
+    {
+      "id": "c22",
+      "created_at": 1767225540000,
+      "type": "text",
+      "title": "2026 goals",
+      "text": "ship recall, read more papers, run 500 km"
+    },
+    {
+      "id": "c23",
+      "created_at": 1759449600000,
+      "type": "text",
+      "title": "Kubernetes ingress debugging",
+      "text": "Ingress controllers, 502s, service endpoints and DNS."
+    },
+    {
+      "id": "c24",
+      "created_at": 1765065600000,
+      "type": "text",
+      "title": "Redis persistence options",
+      "text": "RDB snapshots vs AOF, fsync policies, replication."
+    },
+    {
+      "id": "c25",
+      "created_at": 1766880000000,
+      "type": "url",
+      "title": "Show HN: Distributed lock service",
+      "url": "https://news.ycombinator.com/item?id=12345",
+      "text": "A hosted lock service built on etcd."
+    },
+    {
+      "id": "c26",
+      "created_at": 1680825600000,
+      "type": "text",
+      "title": "SQLite vs Postgres",
+      "text": "When an embedded database beats a server database."
+    }
+  ],
+  "cases": [
+    {
+      "id": "exact-term-redis",
+      "query": "redis",
+      "tags": [
+        "exact"
+      ],
+      "expected_top3_ids": [
+        "c01",
+        "c24",
+        "c15"
+      ]
+    },
+    {
+      "id": "exact-phrase-distributed-locks",
+      "query": "distributed locks",
+      "tags": [
+        "exact"
+      ],
+      "expected_top3_ids": [
+        "c01",
+        "c02",
+        "c06"
+      ]
+    },
+    {
+      "id": "synonym-mutex",
+      "query": "mutex",
+      "tags": [
+        "synonym"
+      ],
+      "expected_top3_ids": [
+        "c01",
+        "c25",
+        "c03"
+      ]
+    },
+    {
+      "id": "synonym-article",
+      "query": "article",
+      "tags": [
+        "synonym"
+      ],
+      "expected_top3_ids": [
+        "c10",
+        "c06"
+      ]
+    },
+    {
+      "id": "paraphrase-distributed-locks",
+      "query": "that post about distributed locks",
+      "tags": [
+        "paraphrase"
+      ],
+      "expected_top3_ids": [
+        "c06",
+        "c01",
+        "c10"
+      ]
+    },
+    {
+      "id": "recency-same-title",
+      "query": "distributed locks with redis",
+      "tags": [
+        "recency"
+      ],
+      "expected_top3_ids": [
+        "c01",
+        "c02",
+        "c06"
+      ]
+    },
+    {
+      "id": "pure-fallback-no-matches",
+      "query": "blockchain quantum",
+      "tags": [
+        "fallback"
+      ],
+      "expected_top3_ids": [
+        "c22",
+        "c01",
+        "c06"
+      ]
+    },
+    {
+      "id": "typo-postgre",
+      "query": "postgre",
+      "tags": [
+        "fallback",
+        "typo"
+      ],
+      "expected_top3_ids": [
+        "c04",
+        "c10",
+        "c05"
+      ]
+    },
+    {
+      "id": "url-domain",
+      "query": "engineering.example.com",
+      "tags": [
+        "url"
+      ],
+      "expected_top3_ids": [
+        "c01",
+        "c04",
+        "c25"
+      ]
+    },
+    {
+      "id": "screenshot-ocr",
+      "query": "fencing tokens",
+      "tags": [
+        "screenshot"
+      ],
+      "expected_top3_ids": [
+        "c06",
+        "c01",
+        "c25"
+      ]
+    },
+    {
+      "id": "stopword-only",
+      "query": "the of and",
+      "tags": [
+        "fallback"
+      ],
+      "expected_top3_ids": [
+        "c22",
+        "c01",
+        "c06"
+      ]
+    },
+    {
+      "id": "q3-planning",
+      "query": "Q3 planning",
+      "tags": [
+        "exact",
+        "case"
+      ],
+      "expected_top3_ids": [
+        "c14",
+        "c12"
+      ]
+    },
+    {
+      "id": "year-number",
+      "query": "2026",
+      "tags": [
+        "exact",
+        "number"
+      ],
+      "expected_top3_ids": [
+        "c22"
+      ]
+    },
+    {
+      "id": "case-insensitive-redis",
+      "query": "REDIS",
+      "tags": [
+        "case"
+      ],
+      "expected_top3_ids": [
+        "c01",
+        "c24",
+        "c15"
+      ]
+    },
+    {
+      "id": "title-outranks-body",
+      "query": "SQLite FTS5",
+      "tags": [
+        "exact"
+      ],
+      "expected_top3_ids": [
+        "c16",
+        "c26"
+      ]
+    },
+    {
+      "id": "multi-synonym-encryption-key",
+      "query": "encryption key",
+      "tags": [
+        "synonym"
+      ],
+      "expected_top3_ids": [
+        "c17",
+        "c10"
+      ]
+    },
+    {
+      "id": "fallback-shared-token",
+      "query": "cache invalidation",
+      "tags": [
+        "fallback"
+      ],
+      "expected_top3_ids": [
+        "c22",
+        "c01",
+        "c06"
+      ]
+    },
+    {
+      "id": "single-result-coffee",
+      "query": "coffee",
+      "tags": [
+        "sparse"
+      ],
+      "expected_top3_ids": [
+        "c11"
+      ]
+    },
+    {
+      "id": "synonym-semaphore",
+      "query": "semaphore",
+      "tags": [
+        "synonym"
+      ],
+      "expected_top3_ids": [
+        "c01",
+        "c25",
+        "c03"
+      ]
+    },
+    {
+      "id": "recency-tie-lock-service",
+      "query": "distributed lock service",
+      "tags": [
+        "recency"
+      ],
+      "expected_top3_ids": [
+        "c01",
+        "c02",
+        "c06"
+      ]
+    }
+  ]
+}

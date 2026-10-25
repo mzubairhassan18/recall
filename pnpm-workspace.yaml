@@ -1,0 +1,5 @@
+packages:
+  - packages/*
+  - apps/relay
+  - apps/chrome-ext
+  - apps/desktop

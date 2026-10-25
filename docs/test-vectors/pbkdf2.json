@@ -1,0 +1,30 @@
+{
+  "note": "PBKDF2-HMAC-SHA256. Vectors 1-2 are the published NIST/RFC-adjacent vectors (validated against OpenSSL). NIST publishes no 600k-iteration vector, so vector 3 freezes the production parameter set using OpenSSL's reference implementation. Do not regenerate without a spec change.",
+  "kdf": "PBKDF2-HMAC-SHA256",
+  "vectors": [
+    {
+      "name": "nist-pbkdf2-sha256-c1",
+      "passphrase": "passwd",
+      "salt_utf8": "salt",
+      "iterations": 1,
+      "dklen": 64,
+      "dk_hex": "55ac046e56e3089fec1691c22544b605f94185216dde0465e68b9d57c20dacbc49ca9cccf179b645991664b39d77ef317c71b845b1e30bd509112041d3a19783"
+    },
+    {
+      "name": "nist-pbkdf2-sha256-c80000",
+      "passphrase": "Password",
+      "salt_utf8": "NaCl",
+      "iterations": 80000,
+      "dklen": 64,
+      "dk_hex": "4ddcd8f60b98be21830cee5ef22701f9641a4418d04c0414aeff08876b34ab56a1d425a1225833549adb841b51c9b3176a272bdebba1d078478f62b397f33c8d"
+    },
+    {
+      "name": "recall-production-600000",
+      "passphrase": "recall-test-vector",
+      "salt_utf8": "recall-salt-0016",
+      "iterations": 600000,
+      "dklen": 32,
+      "dk_hex": "22772769d6efe02b0b2b753ad8debc8463ee4ef243fd6ba3a54eae9e4f0d227b"
+    }
+  ]
+}
