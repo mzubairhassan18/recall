@@ -321,6 +321,8 @@ fun RecallTextField(
     password: Boolean = false,
     enabled: Boolean = true,
     singleLine: Boolean = true,
+    minLines: Int = 1,
+    maxLines: Int = if (singleLine) 1 else Int.MAX_VALUE,
     keyboardType: KeyboardType = KeyboardType.Text,
     trailingIcon: (@Composable () -> Unit)? = null,
 ) {
@@ -330,6 +332,8 @@ fun RecallTextField(
         modifier = modifier.fillMaxWidth(),
         enabled = enabled,
         singleLine = singleLine,
+        minLines = minLines,
+        maxLines = maxLines,
         label = label?.let { text ->
             {
                 Text(
@@ -444,11 +448,12 @@ fun RecallIconButton(
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
     tint: Color = RecallMuted,
+    size: Dp = 42.dp,
 ) {
     val shape = RoundedCornerShape(14.dp)
     Box(
         modifier = modifier
-            .size(42.dp)
+            .size(size)
             .clip(shape)
             .background(Color.White.copy(alpha = 0.055f))
             .border(1.dp, Color.White.copy(alpha = 0.10f), shape)
@@ -459,7 +464,7 @@ fun RecallIconButton(
             imageVector = icon,
             contentDescription = contentDescription,
             tint = tint,
-            modifier = Modifier.size(20.dp),
+            modifier = Modifier.size(size * 0.48f),
         )
     }
 }

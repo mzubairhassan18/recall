@@ -8,9 +8,21 @@ import com.recall.app.widget.RecallWidgetProvider
 import com.recall.core.CapturePayload
 
 object CaptureSaver {
-    suspend fun save(context: Context, payload: CapturePayload, thumbnail: ByteArray? = null): Boolean {
+    suspend fun save(
+        context: Context,
+        payload: CapturePayload,
+        thumbnail: ByteArray? = null,
+        favorite: Boolean = false,
+        tags: List<String> = emptyList(),
+    ): Boolean {
         val repository = Session.repository() ?: return false
-        val saved = repository.insert(payload, System.currentTimeMillis(), thumbnail)
+        val saved = repository.insert(
+            payload = payload,
+            createdAt = System.currentTimeMillis(),
+            thumbnail = thumbnail,
+            favorite = favorite,
+            tags = tags,
+        )
         if (saved) {
             RecallWidgetProvider.refresh(context)
             SyncWorker.runOnce(context)

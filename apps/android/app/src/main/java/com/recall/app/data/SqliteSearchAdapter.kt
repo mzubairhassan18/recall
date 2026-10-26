@@ -20,7 +20,7 @@ class SqliteSearchAdapter(private val database: RecallDatabase) : SearchAdapters
             SELECT $columns, -bm25(captures_fts) AS score
             FROM captures_fts
             JOIN captures c ON c.rowid = captures_fts.rowid
-            WHERE captures_fts MATCH ?
+            WHERE captures_fts MATCH ? AND c.archived = 0
             ORDER BY score DESC, c.created_at DESC, c.id ASC
             LIMIT ?
         """.trimIndent()
@@ -48,7 +48,7 @@ class SqliteSearchAdapter(private val database: RecallDatabase) : SearchAdapters
         val sql = """
             SELECT $columns, 0.5 AS score
             FROM captures c
-            WHERE ${clauses.joinToString(" OR ")}
+            WHERE c.archived = 0 AND (${clauses.joinToString(" OR ")})
             ORDER BY c.created_at DESC, c.id ASC
             LIMIT ?
         """.trimIndent()
@@ -61,6 +61,7 @@ class SqliteSearchAdapter(private val database: RecallDatabase) : SearchAdapters
         val sql = """
             SELECT $columns, 1.0 AS score
             FROM captures c
+            WHERE c.archived = 0
             ORDER BY c.created_at DESC, c.id ASC
             LIMIT ?
         """.trimIndent()

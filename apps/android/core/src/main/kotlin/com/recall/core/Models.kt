@@ -64,6 +64,9 @@ data class SearchResult(
     val score: Double,
     val url: String? = null,
     val thumbnailB64: String? = null,
+    val favorite: Boolean = false,
+    val archived: Boolean = false,
+    val tags: List<String> = emptyList(),
 )
 
 /** One entry from GET /list. */
@@ -94,6 +97,9 @@ data class ExportManifest(
 data class ExportEntry(
     val id: String,
     @SerialName("created_at") val createdAt: Long,
+    val favorite: Boolean = false,
+    val archived: Boolean = false,
+    val tags: List<String> = emptyList(),
 )
 
 /** Local row used by the Android store and the memory adapter. */

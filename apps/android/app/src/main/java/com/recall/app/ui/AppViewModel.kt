@@ -36,6 +36,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.util.Locale
 import javax.crypto.Cipher
 
 data class RecallUiState(
@@ -44,7 +45,6 @@ data class RecallUiState(
     val busy: Boolean = false,
     val count: Int = 0,
     val query: String = "",
-    val mode: String = MODE_SEARCH,
     val typeFilter: String? = null,
     val domain: String = "",
     val results: List<SearchResult> = emptyList(),
@@ -63,12 +63,18 @@ data class RecallUiState(
     val pendingScreenshots: Int = 0,
     val screenshotMode: String = AppConfig.MODE_OFF,
     val allowlist: Set<String> = emptySet(),
-) {
-    companion object {
-        const val MODE_SEARCH = "search"
-        const val MODE_TIMELINE = "timeline"
-    }
-}
+    val timelineView: Boolean = false,
+    val sortDescending: Boolean = true,
+    val favoritesOnly: Boolean = false,
+    val selectedTag: String? = null,
+    val allTags: List<String> = emptyList(),
+    val selectionMode: Boolean = false,
+    val selectedIds: Set<String> = emptySet(),
+    val archivedOpen: Boolean = false,
+    val archivedResults: List<SearchResult> = emptyList(),
+    val archivedCount: Int = 0,
+    val composerOpen: Boolean = false,
+)
 
 class AppViewModel(application: Application) : AndroidViewModel(application) {
     private val config = AppConfig(application)
@@ -368,6 +374,11 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
                 detail = null,
                 settingsOpen = false,
                 syncing = false,
+                selectionMode = false,
+                selectedIds = emptySet(),
+                archivedOpen = false,
+                archivedResults = emptyList(),
+                composerOpen = false,
                 error = null,
                 notice = null,
             )
@@ -376,7 +387,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun setQuery(value: String) {
-        _state.update { it.copy(query = value, mode = RecallUiState.MODE_SEARCH, error = null) }
+        _state.update { it.copy(query = value, error = null) }
         searchJob?.cancel()
         searchJob = viewModelScope.launch {
             delay(140)
@@ -389,7 +400,13 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         val current = _state.value
         val results = runCatching {
             if (value.isBlank()) {
-                repository.timeline(current.typeFilter, current.domain)
+                repository.timeline(
+                    type = current.typeFilter,
+                    domain = current.domain,
+                    favoritesOnly = current.favoritesOnly,
+                    tag = current.selectedTag,
+                    descending = current.sortDescending,
+                )
             } else {
                 repository.search(value, synonyms)
             }
@@ -397,12 +414,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
             _state.update { state -> state.copy(error = "Search failed.") }
             return
         }
-        _state.update { it.copy(results = results) }
-    }
-
-    fun setMode(mode: String) {
-        _state.update { it.copy(mode = mode) }
-        viewModelScope.launch { refreshInternal() }
+        _state.update { it.copy(results = applyFilters(results, it)) }
     }
 
     fun setTypeFilter(type: String?) {
@@ -419,6 +431,25 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    fun setTimelineView(enabled: Boolean) {
+        _state.update { it.copy(timelineView = enabled) }
+    }
+
+    fun setSortDescending(descending: Boolean) {
+        _state.update { it.copy(sortDescending = descending) }
+        viewModelScope.launch { refreshInternal() }
+    }
+
+    fun setFavoritesOnly(enabled: Boolean) {
+        _state.update { it.copy(favoritesOnly = enabled) }
+        viewModelScope.launch { refreshInternal() }
+    }
+
+    fun setSelectedTag(tag: String?) {
+        _state.update { it.copy(selectedTag = tag) }
+        viewModelScope.launch { refreshInternal() }
+    }
+
     fun refresh() {
         viewModelScope.launch { refreshInternal() }
     }
@@ -427,15 +458,249 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         val repository = Session.repository() ?: return
         val current = _state.value
         val count = runCatching { repository.count() }.getOrDefault(current.count)
+        val archivedCount = runCatching { repository.countArchived() }.getOrDefault(current.archivedCount)
+        val allTags = runCatching { repository.allTags() }.getOrDefault(current.allTags)
+        val selectedTag = current.selectedTag?.takeIf { tag ->
+            allTags.any { it.equals(tag, ignoreCase = true) }
+        }
         val results = runCatching {
-            if (current.mode == RecallUiState.MODE_SEARCH && current.query.isNotBlank()) {
+            if (current.query.isNotBlank()) {
                 repository.search(current.query, synonyms)
             } else {
-                repository.timeline(current.typeFilter, current.domain)
+                repository.timeline(
+                    type = current.typeFilter,
+                    domain = current.domain,
+                    favoritesOnly = current.favoritesOnly,
+                    tag = selectedTag,
+                    descending = current.sortDescending,
+                )
             }
         }.getOrElse { emptyList() }
-        _state.update { it.copy(count = count, results = results) }
+        val filtered = applyFilters(results, current.copy(selectedTag = selectedTag))
+        val archivedResults = if (current.archivedOpen) {
+            runCatching { repository.archived() }.getOrDefault(current.archivedResults)
+        } else {
+            current.archivedResults
+        }
+        _state.update {
+            it.copy(
+                count = count,
+                archivedCount = archivedCount,
+                allTags = allTags,
+                selectedTag = selectedTag,
+                results = filtered,
+                archivedResults = archivedResults,
+            )
+        }
     }
+
+    private fun applyFilters(results: List<SearchResult>, state: RecallUiState): List<SearchResult> {
+        val domain = state.domain.trim().lowercase(Locale.ROOT)
+        val filtered = results.filter { result ->
+            (state.typeFilter == null || result.type.wire == state.typeFilter) &&
+                (domain.isEmpty() || result.url?.lowercase(Locale.ROOT)?.contains(domain) == true) &&
+                (!state.favoritesOnly || result.favorite) &&
+                (state.selectedTag == null || result.tags.any {
+                    it.equals(state.selectedTag, ignoreCase = true)
+                })
+        }
+        return if (state.sortDescending) {
+            filtered.sortedWith(
+                compareByDescending<SearchResult> { it.createdAt }.thenBy { it.id },
+            )
+        } else {
+            filtered.sortedWith(compareBy<SearchResult> { it.createdAt }.thenBy { it.id })
+        }
+    }
+
+    fun openComposer() {
+        _state.update {
+            it.copy(
+                composerOpen = true,
+                selectionMode = false,
+                selectedIds = emptySet(),
+                error = null,
+                notice = null,
+            )
+        }
+    }
+
+    fun closeComposer() {
+        _state.update { it.copy(composerOpen = false) }
+    }
+
+    fun saveQuickCapture(text: String, tags: String, favorite: Boolean) {
+        val clean = text.trim()
+        if (clean.isEmpty()) {
+            _state.update { it.copy(error = "Write something first.") }
+            return
+        }
+        val context = getApplication<Application>()
+        viewModelScope.launch {
+            _state.update { it.copy(error = null) }
+            val saved = CaptureSaver.save(
+                context = context,
+                payload = payloadForText(clean, null),
+                favorite = favorite,
+                tags = parseTags(tags),
+            )
+            if (saved) {
+                _state.update { it.copy(composerOpen = false, notice = "Saved to Recall.") }
+                refreshInternal()
+            } else {
+                _state.update { it.copy(error = "Could not save that capture.") }
+            }
+        }
+    }
+
+    fun startSelection(id: String? = null) {
+        _state.update {
+            it.copy(
+                selectionMode = true,
+                selectedIds = if (id == null) emptySet() else setOf(id),
+                composerOpen = false,
+                error = null,
+            )
+        }
+    }
+
+    fun toggleSelection(id: String) {
+        _state.update {
+            val selected = if (id in it.selectedIds) it.selectedIds - id else it.selectedIds + id
+            it.copy(selectedIds = selected)
+        }
+    }
+
+    fun cancelSelection() {
+        _state.update { it.copy(selectionMode = false, selectedIds = emptySet()) }
+    }
+
+    fun archiveSelected() {
+        val ids = _state.value.selectedIds
+        if (ids.isEmpty()) {
+            _state.update { it.copy(notice = "Select at least one capture.") }
+            return
+        }
+        viewModelScope.launch {
+            val repository = Session.repository() ?: return@launch
+            val count = repository.archiveMany(ids)
+            _state.update {
+                it.copy(
+                    selectionMode = false,
+                    selectedIds = emptySet(),
+                    detail = null,
+                    notice = if (count > 0) "Archived $count capture(s)." else "Nothing archived.",
+                )
+            }
+            RecallWidgetProvider.refresh(getApplication())
+            refreshInternal()
+        }
+    }
+
+    fun archiveCapture(id: String) {
+        viewModelScope.launch {
+            val repository = Session.repository() ?: return@launch
+            repository.setArchived(id, true)
+            _state.update {
+                it.copy(
+                    detail = null,
+                    selectedIds = it.selectedIds - id,
+                    notice = "Moved to archive.",
+                )
+            }
+            RecallWidgetProvider.refresh(getApplication())
+            refreshInternal()
+        }
+    }
+
+    fun restoreCapture(id: String) {
+        viewModelScope.launch {
+            val repository = Session.repository() ?: return@launch
+            repository.setArchived(id, false)
+            _state.update {
+                it.copy(
+                    detail = null,
+                    notice = "Restored from archive.",
+                )
+            }
+            RecallWidgetProvider.refresh(getApplication())
+            refreshInternal()
+        }
+    }
+
+    fun toggleFavorite(id: String) {
+        viewModelScope.launch {
+            val repository = Session.repository() ?: return@launch
+            val current = _state.value
+            val isFavorite = current.detail?.takeIf { it.id == id }?.favorite
+                ?: current.results.firstOrNull { it.id == id }?.favorite
+                ?: current.archivedResults.firstOrNull { it.id == id }?.favorite
+                ?: false
+            repository.setFavorite(id, !isFavorite)
+            val updatedDetail = current.detail?.takeIf { it.id == id }?.let { repository.detail(id) }
+            _state.update { it.copy(detail = updatedDetail ?: it.detail) }
+            refreshInternal()
+        }
+    }
+
+    fun addTag(id: String, value: String) {
+        if (value.isBlank()) return
+        viewModelScope.launch {
+            val repository = Session.repository() ?: return@launch
+            repository.addTag(id, value)
+            val current = _state.value
+            if (current.detail?.id == id) {
+                _state.update { it.copy(detail = repository.detail(id)) }
+            }
+            refreshInternal()
+        }
+    }
+
+    fun removeTag(id: String, value: String) {
+        viewModelScope.launch {
+            val repository = Session.repository() ?: return@launch
+            repository.removeTag(id, value)
+            val current = _state.value
+            if (current.detail?.id == id) {
+                _state.update { it.copy(detail = repository.detail(id)) }
+            }
+            refreshInternal()
+        }
+    }
+
+    fun openArchived() {
+        _state.update {
+            it.copy(
+                archivedOpen = true,
+                settingsOpen = false,
+                detail = null,
+                selectionMode = false,
+                selectedIds = emptySet(),
+                composerOpen = false,
+                error = null,
+            )
+        }
+        viewModelScope.launch { loadArchived() }
+    }
+
+    fun closeArchived() {
+        _state.update { it.copy(archivedOpen = false, detail = null) }
+        viewModelScope.launch { refreshInternal() }
+    }
+
+    private suspend fun loadArchived() {
+        val repository = Session.repository() ?: return
+        val results = runCatching { repository.archived() }.getOrDefault(emptyList())
+        val count = runCatching { repository.countArchived() }.getOrDefault(results.size)
+        _state.update { it.copy(archivedResults = results, archivedCount = count) }
+    }
+
+    private fun parseTags(value: String): List<String> =
+        value.split(',')
+            .map { it.trim().lowercase(Locale.ROOT) }
+            .filter { it.isNotEmpty() }
+            .distinct()
+            .take(8)
 
     fun openDetail(id: String) {
         viewModelScope.launch {
@@ -529,6 +794,11 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         _state.update {
             it.copy(
                 settingsOpen = true,
+                archivedOpen = false,
+                composerOpen = false,
+                detail = null,
+                selectionMode = false,
+                selectedIds = emptySet(),
                 pinConfigured = pinVault.hasPin,
                 pendingScreenshots = config.pendingScreenshots().size,
             )
@@ -675,6 +945,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
             try {
                 val count = withContext(Dispatchers.IO) { repository.importFrom(app.contentResolver, uri) }
                 _state.update { it.copy(notice = "Imported $count encrypted capture(s).") }
+                RecallWidgetProvider.refresh(app)
                 refreshInternal()
             } catch (error: Exception) {
                 _state.update { it.copy(error = error.message ?: "import-failed") }

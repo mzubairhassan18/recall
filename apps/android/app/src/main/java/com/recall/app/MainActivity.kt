@@ -27,9 +27,12 @@ import javax.crypto.Cipher
 
 class MainActivity : FragmentActivity() {
     private val viewModel: AppViewModel by viewModels()
+    private var pendingNewCapture = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        pendingNewCapture = intent?.getBooleanExtra(EXTRA_NEW_CAPTURE, false) == true
+        intent?.removeExtra(EXTRA_NEW_CAPTURE)
         setContent {
             RecallTheme {
                 val state by viewModel.state.collectAsStateWithLifecycle()
@@ -37,6 +40,10 @@ class MainActivity : FragmentActivity() {
                 LaunchedEffect(state.configured, state.locked) {
                     if (state.configured && !state.locked) {
                         PendingShare.take()?.let(viewModel::savePendingShare)
+                        if (pendingNewCapture) {
+                            pendingNewCapture = false
+                            viewModel.openComposer()
+                        }
                     }
                 }
                 LaunchedEffect(state.configured, state.locked, state.biometricEnabled) {
@@ -75,8 +82,13 @@ class MainActivity : FragmentActivity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
+        val wantsNewCapture = intent.getBooleanExtra(EXTRA_NEW_CAPTURE, false)
+        intent.removeExtra(EXTRA_NEW_CAPTURE)
         if (Session.isUnlocked()) {
             PendingShare.take()?.let(viewModel::savePendingShare)
+            if (wantsNewCapture) viewModel.openComposer()
+        } else if (wantsNewCapture) {
+            pendingNewCapture = true
         }
     }
 
@@ -161,5 +173,9 @@ class MainActivity : FragmentActivity() {
         runCatching {
             startActivity(Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS))
         }
+    }
+
+    companion object {
+        const val EXTRA_NEW_CAPTURE = "com.recall.app.extra.NEW_CAPTURE"
     }
 }

@@ -86,10 +86,19 @@ fun RecallRoot(
                 onRequestScreenshotPermissions = onRequestScreenshotPermissions,
                 onOpenUsageAccess = onOpenUsageAccess,
             )
+            state.archivedOpen -> ArchivedScreen(state = state, viewModel = viewModel)
             else -> MainScreen(state, viewModel)
         }
         state.detail?.let { detail ->
-            DetailDialog(detail = detail, onDismiss = viewModel::closeDetail)
+            DetailDialog(
+                detail = detail,
+                onDismiss = viewModel::closeDetail,
+                onToggleFavorite = { viewModel.toggleFavorite(detail.id) },
+                onAddTag = { tag -> viewModel.addTag(detail.id, tag) },
+                onRemoveTag = { tag -> viewModel.removeTag(detail.id, tag) },
+                onArchive = { viewModel.archiveCapture(detail.id) },
+                onRestore = { viewModel.restoreCapture(detail.id) },
+            )
         }
     }
 }

@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
+import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 import net.zetetic.database.sqlcipher.SupportOpenHelperFactory
 
@@ -17,7 +18,7 @@ import net.zetetic.database.sqlcipher.SupportOpenHelperFactory
  */
 @Database(
     entities = [CaptureEntity::class, AnnotationEntity::class],
-    version = 1,
+    version = 2,
     exportSchema = true,
 )
 abstract class RecallDatabase : RoomDatabase() {
@@ -42,9 +43,19 @@ abstract class RecallDatabase : RoomDatabase() {
             val factory = SupportOpenHelperFactory(bytes, null, true)
             return Room.databaseBuilder(context.applicationContext, RecallDatabase::class.java, NAME)
                 .openHelperFactory(factory)
+                .addMigrations(MIGRATION_1_2)
                 .addCallback(FtsCallback)
                 .build()
         }
+    }
+}
+
+private val MIGRATION_1_2 = object : Migration(1, 2) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE captures ADD COLUMN favorite INTEGER NOT NULL DEFAULT 0")
+        db.execSQL("ALTER TABLE captures ADD COLUMN archived INTEGER NOT NULL DEFAULT 0")
+        db.execSQL("CREATE INDEX IF NOT EXISTS index_captures_favorite ON captures(favorite)")
+        db.execSQL("CREATE INDEX IF NOT EXISTS index_captures_archived ON captures(archived)")
     }
 }
 

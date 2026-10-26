@@ -64,6 +64,7 @@ class RecallWidgetProvider : AppWidgetProvider() {
         views.setTextViewText(R.id.widget_body, body)
         views.setTextViewText(R.id.widget_footer, footer)
         views.setOnClickPendingIntent(R.id.widget_root, openApp(context))
+        views.setOnClickPendingIntent(R.id.widget_new, newCapture(context))
         return views
     }
 
@@ -73,6 +74,18 @@ class RecallWidgetProvider : AppWidgetProvider() {
         return PendingIntent.getActivity(
             context,
             0,
+            intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+        )
+    }
+
+    private fun newCapture(context: Context): PendingIntent {
+        val intent = Intent(context, MainActivity::class.java)
+            .putExtra(MainActivity.EXTRA_NEW_CAPTURE, true)
+            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+        return PendingIntent.getActivity(
+            context,
+            1,
             intent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )

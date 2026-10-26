@@ -11,6 +11,8 @@ import androidx.room.PrimaryKey
         Index("created_at"),
         Index("type"),
         Index("synced"),
+        Index("favorite"),
+        Index("archived"),
     ],
 )
 data class CaptureEntity(
@@ -24,6 +26,8 @@ data class CaptureEntity(
     val thumbnail: ByteArray?,
     @ColumnInfo(name = "blob_ref") val blobRef: String,
     val synced: Int = 0,
+    val favorite: Int = 0,
+    val archived: Int = 0,
 )
 
 @Entity(tableName = "annotations", indices = [Index("target_id")])
