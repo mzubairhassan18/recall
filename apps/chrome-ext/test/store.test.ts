@@ -8,7 +8,7 @@ import {
   type CorpusRow,
 } from "@recall/search-core";
 import { base64ToBytes, bytesToBase64, decrypt, deriveKeyBytes, encrypt, utf8Encode } from "@recall/crypto-core";
-import { CaptureStore, MemoryPersistence } from "../src/lib/db.js";
+import { CaptureStore, MemoryPersistence, initSqliteOnce } from "../src/lib/db.js";
 
 interface SearchFixture {
   now: number;
@@ -123,5 +123,120 @@ describe("capture round-trip through encryption and SQLite", () => {
 
     const screenshots = store.timeline({ type: "screenshot" });
     expect(screenshots.map((row) => row.id)).toContain("c06");
+  });
+});
+
+describe("local metadata: tags, favorites, archive", () => {
+  it("stores normalized tags and filters active captures", async () => {
+    const local = await CaptureStore.open(new MemoryPersistence());
+    await local.insertCapture({
+      id: "a",
+      created_at: 1_000,
+      type: "text",
+      text: "alpha",
+      favorite: 1,
+      tags: ["Work", " idea ", "work"],
+    });
+    await local.insertCapture({
+      id: "b",
+      created_at: 2_000,
+      type: "url",
+      url: "https://example.com/beta",
+      title: "Beta",
+      tags: ["reading"],
+    });
+    await local.insertCapture({ id: "c", created_at: 3_000, type: "text", text: "gamma" });
+
+    expect(local.getCapture("a")).toMatchObject({ favorite: 1, archived: 0 });
+    expect(local.tagsFor("a")).toEqual(["work", "idea"]);
+    expect(local.allTags()).toEqual(["idea", "reading", "work"]);
+    expect(local.timeline({ favoritesOnly: true }).map((row) => row.id)).toEqual(["a"]);
+    expect(local.timeline({ tag: "WORK" }).map((row) => row.id)).toEqual(["a"]);
+    expect(local.timeline({ descending: false }).map((row) => row.id)).toEqual(["a", "b", "c"]);
+
+    await local.setArchived("b", true);
+    expect(local.count()).toBe(2);
+    expect(local.countArchived()).toBe(1);
+    expect(local.timeline().map((row) => row.id)).toEqual(["c", "a"]);
+    expect(local.archived().map((row) => row.id)).toEqual(["b"]);
+    expect(local.allTags()).toEqual(["idea", "work"]);
+    expect((await local.search("beta", synonyms, 4_000)).map((row) => row.id)).not.toContain("b");
+
+    await local.restoreMany(["b"]);
+    expect(local.count()).toBe(3);
+    expect(local.countArchived()).toBe(0);
+
+    const added = await local.addTag("c", " New ");
+    expect(added).toContain("new");
+    const removed = await local.removeTag("c", "new");
+    expect(removed).not.toContain("new");
+
+    expect(await local.archiveMany(["a", "c"])).toBe(2);
+    expect(local.timeline().map((row) => row.id)).toEqual(["b"]);
+    expect(await local.restoreMany(["a", "c"])).toBe(2);
+    expect(local.timeline().map((row) => row.id)).toEqual(["c", "b", "a"]);
+    local.close();
+  });
+
+  it("migrates a legacy database without favorite or archived columns", async () => {
+    const sqlite = await initSqliteOnce();
+    const legacy = new sqlite.oo1.DB(":memory:", "c");
+    legacy.exec(`
+      CREATE TABLE captures (
+        id TEXT PRIMARY KEY,
+        created_at INTEGER NOT NULL,
+        type TEXT NOT NULL,
+        url TEXT, title TEXT, text TEXT, ocr_text TEXT,
+        thumbnail BLOB,
+        blob_ref TEXT NOT NULL,
+        synced INTEGER NOT NULL DEFAULT 0
+      );
+      CREATE TABLE annotations (
+        id TEXT PRIMARY KEY,
+        target_id TEXT NOT NULL,
+        kind TEXT NOT NULL,
+        value TEXT,
+        created_at INTEGER NOT NULL
+      );
+      CREATE VIRTUAL TABLE captures_fts USING fts5(
+        title, text, ocr_text, url,
+        content='captures', content_rowid='rowid'
+      );
+      CREATE TRIGGER captures_ai AFTER INSERT ON captures BEGIN
+        INSERT INTO captures_fts(rowid, title, text, ocr_text, url)
+        VALUES (new.rowid, new.title, new.text, new.ocr_text, new.url);
+      END;
+      CREATE TRIGGER captures_ad AFTER DELETE ON captures BEGIN
+        INSERT INTO captures_fts(captures_fts, rowid, title, text, ocr_text, url)
+        VALUES ('delete', old.rowid, old.title, old.text, old.ocr_text, old.url);
+      END;
+      CREATE TRIGGER captures_au AFTER UPDATE ON captures BEGIN
+        INSERT INTO captures_fts(captures_fts, rowid, title, text, ocr_text, url)
+        VALUES ('delete', old.rowid, old.title, old.text, old.ocr_text, old.url);
+        INSERT INTO captures_fts(rowid, title, text, ocr_text, url)
+        VALUES (new.rowid, new.title, new.text, new.ocr_text, new.url);
+      END;
+      INSERT INTO captures (id, created_at, type, text, blob_ref, synced)
+      VALUES ('legacy', 1234, 'text', 'old row', 'legacy', 1);
+    `);
+    const bytes = sqlite.capi.sqlite3_js_db_export(legacy);
+    legacy.close();
+
+    const persistence = new MemoryPersistence();
+    await persistence.save(bytes);
+    const migrated = await CaptureStore.open(persistence);
+    expect(migrated.getCapture("legacy")).toMatchObject({
+      text: "old row",
+      favorite: 0,
+      archived: 0,
+      synced: 1,
+    });
+    expect(migrated.count()).toBe(1);
+    await migrated.setFavorite("legacy", true);
+    await migrated.setArchived("legacy", true);
+    expect(migrated.getCapture("legacy")).toMatchObject({ favorite: 1, archived: 1 });
+    expect(migrated.count()).toBe(0);
+    expect(migrated.countArchived()).toBe(1);
+    migrated.close();
   });
 });

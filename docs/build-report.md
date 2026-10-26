@@ -19,7 +19,7 @@ environment are listed as **not verified**, not silently marked as passing.
 | Relay stores only ciphertext + `{id,user_id,created_at,size}`; no search/OCR/plaintext/push | PASS | `pnpm relay:smoke`: health, auth, register, PUT/GET/list/since, decrypt, per-user scoping, validation |
 | Relay remote deploy | PASS | `https://recall-relay.mzubairhassan18.workers.dev`; D1 `recall-meta`, R2 `recall-blobs`; health 200, unauth 401, remote register/PUT/GET/list/decrypt |
 | Local DB unreadable without passphrase | PASS (code/tests) | Chrome/desktop tests round-trip encrypted persistence; Android uses SQLCipher; no plaintext DB file on disk |
-| Chrome extension | PASS (build/tests/static) | 32 tests, typecheck, `dist/` built; popup hidden-overlay fix applied; manual reload/UI check pending |
+| Chrome extension | PASS (build/tests/static + mocked popup) | 35 tests, typecheck, `dist/` built; tags/favorites/archive and popup interactions verified with a mocked Chrome API harness; manual unpacked-extension reload pending |
 | Desktop app | PASS (build/tests/smoke) | 36 tests, typecheck, `dist/` built, `--smoke` exit 0 |
 | Signed Android release APK | PASS (build/static + partial runtime) | `:app:assembleRelease`; v2 signature verifies; installed on SM-A715F; desktop↔Android sync verified; biometric enrollment runtime pending |
 | No server-side search/OCR/LLM/embeddings; no web/iOS | PASS | Relay routes only auth/blob/list/health; no model or index service exists |
@@ -35,7 +35,7 @@ pnpm test
   @recall/shared-types   1 passed
   @recall/crypto-core   34 passed
   @recall/search-core   36 passed
-  @recall/chrome-ext    32 passed
+  @recall/chrome-ext    35 passed
   @recall/desktop       36 passed
   @recall/relay         relay-smoke: PASS
                         (health, auth, register, put x3, list, since, get, decrypt,
@@ -235,9 +235,9 @@ it locally. The local `.env.local` is gitignored.
 - Android biometric enrollment/decryption after the `CryptoObject` fix (the APK is installed; the
   phone was locked at install time). Share/selection capture, screenshot notification actions,
   widget, ML Kit OCR, and battery/WorkManager behavior also need a broader device pass.
-- Manual Chrome extension UI run after the popup overlay fix (reload `apps/chrome-ext/dist` at
-  `chrome://extensions`, then open the popup). Context menus and 30 s sync still need a manual
-  browser pass.
+- Manual Chrome extension UI run after the popup updates (reload `apps/chrome-ext/dist` at
+  `chrome://extensions`, then open the popup). The mocked Chrome API harness passed layout and
+  interaction checks; context menus and 30 s sync still need a manual browser pass.
 - Manual desktop tray/hotkey interaction. Desktop is built and unit-tested, and passes the
   headless smoke test.
 - No automated instrumentation tests; Android UI coverage is compilation, static APK inspection,

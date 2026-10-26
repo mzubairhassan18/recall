@@ -1,6 +1,6 @@
-import type { CapturePayload, CaptureType, SearchResult, SyncReport } from "@recall/shared-types";
+import type { CapturePayload, SyncReport } from "@recall/shared-types";
 import { base64ToBytes, bytesToBase64, importAesKey } from "@recall/crypto-core";
-import { CaptureStore } from "./lib/db.js";
+import { CaptureStore, type CaptureSummary } from "./lib/db.js";
 import { EncryptedPersistence } from "./lib/encrypted-persistence.js";
 import { IdbPersistence } from "./lib/idb-persistence.js";
 import {
@@ -16,7 +16,7 @@ import { createIdentity, unlockIdentity } from "./lib/identity.js";
 import { RelayClient } from "./lib/relay-client.js";
 import { RELAY_SECRET, RELAY_URL } from "./lib/relay-defaults.js";
 import { syncNow } from "./lib/sync.js";
-import type { PopupRequest, PopupResponse, StatusData } from "./lib/messages.js";
+import type { CaptureQuery, PopupRequest, PopupResponse, StatusData } from "./lib/messages.js";
 
 const SYNC_ALARM = "recall-sync";
 const MENU_SELECTION = "recall-save-selection";
@@ -135,7 +135,13 @@ function scheduleSync(): void {
 /* capture                                                             */
 /* ------------------------------------------------------------------ */
 
-async function saveCapture(payload: CapturePayload): Promise<string> {
+interface CaptureMetadata {
+  favorite?: boolean;
+  archived?: boolean;
+  tags?: string[];
+}
+
+async function saveCapture(payload: CapturePayload, meta: CaptureMetadata = {}): Promise<string> {
   await requireKey();
   const store = await getStore();
   const id = crypto.randomUUID();
@@ -149,10 +155,23 @@ async function saveCapture(payload: CapturePayload): Promise<string> {
     ocr_text: payload.ocr_text ?? null,
     thumbnail: payload.thumbnail_b64 ? base64ToBytes(payload.thumbnail_b64) : null,
     synced: 0,
+    favorite: meta.favorite ? 1 : 0,
+    archived: meta.archived ? 1 : 0,
+    tags: meta.tags ?? [],
   });
   flashBadge("✓", "#2e7d32");
   scheduleSync();
   return id;
+}
+
+async function saveTypedCapture(
+  text: string,
+  tags: string[] = [],
+  favorite = false,
+): Promise<string> {
+  const body = typeof text === "string" ? text.trim() : "";
+  if (!body) throw new Error("empty-capture");
+  return saveCapture({ type: "text", text: body }, { tags, favorite });
 }
 
 async function handleContextMenu(info: chrome.contextMenus.OnClickData, tab?: chrome.tabs.Tab): Promise<void> {
@@ -241,11 +260,15 @@ async function buildStatus(): Promise<StatusData> {
   const config = await getConfig();
   const currentKey = await getKey();
   let count = 0;
+  let archivedCount = 0;
   if (currentKey) {
     try {
-      count = (await getStore()).count();
+      const store = await getStore();
+      count = store.count();
+      archivedCount = store.countArchived();
     } catch {
       count = 0;
+      archivedCount = 0;
     }
   }
   return {
@@ -254,20 +277,31 @@ async function buildStatus(): Promise<StatusData> {
     localOnly: config.localOnly,
     relayUrl: config.relayUrl,
     count,
+    archivedCount,
     syncing: syncPromise !== null,
     lastSyncAt,
     lastSyncError,
   };
 }
 
-async function search(query: string): Promise<SearchResult[]> {
-  const store = await getStore();
-  return store.search(query, await loadSynonyms());
+function filterFromQuery(query: CaptureQuery) {
+  return {
+    type: query.captureType,
+    domain: query.domain,
+    favoritesOnly: query.favoritesOnly,
+    tag: query.tag,
+    descending: query.descending,
+  };
 }
 
-async function timeline(captureType?: CaptureType, domain?: string): Promise<SearchResult[]> {
+async function search(query: string, filters: CaptureQuery): Promise<CaptureSummary[]> {
   const store = await getStore();
-  return store.timeline({ type: captureType, domain, limit: 100 });
+  return store.search(query, await loadSynonyms(), Date.now(), filterFromQuery(filters));
+}
+
+async function timeline(filters: CaptureQuery): Promise<CaptureSummary[]> {
+  const store = await getStore();
+  return store.timeline({ ...filterFromQuery(filters), limit: 200 });
 }
 
 async function saveActivePage(): Promise<StatusData> {
@@ -295,11 +329,16 @@ async function handleRequest(request: PopupRequest): Promise<unknown> {
     case "lock":
       return lock();
     case "search":
-      return search(request.query);
+      return search(request.query, request);
     case "timeline":
-      return timeline(request.captureType, request.domain);
+      return timeline(request);
+    case "archived":
+      return (await getStore()).archived();
+    case "tags":
+      return (await getStore()).allTags();
     case "capture": {
-      const row = (await getStore()).getCapture(request.id);
+      const store = await getStore();
+      const row = store.getCapture(request.id);
       if (!row) throw new Error("not-found");
       return {
         id: row.id,
@@ -309,11 +348,28 @@ async function handleRequest(request: PopupRequest): Promise<unknown> {
         url: row.url,
         type: row.type,
         created_at: row.created_at,
+        favorite: row.favorite === 1,
+        archived: row.archived === 1,
+        tags: store.tagsFor(row.id),
         ...(row.thumbnail ? { thumbnail_b64: bytesToBase64(row.thumbnail) } : {}),
       };
     }
     case "save-page":
       return saveActivePage();
+    case "new-capture":
+      return { id: await saveTypedCapture(request.text, request.tags, request.favorite) };
+    case "set-favorite":
+      return { updated: await (await getStore()).setFavorite(request.id, request.favorite) };
+    case "set-archived":
+      return { updated: await (await getStore()).setArchived(request.id, request.archived) };
+    case "archive-many":
+      return { count: await (await getStore()).archiveMany(request.ids) };
+    case "restore-many":
+      return { count: await (await getStore()).restoreMany(request.ids) };
+    case "add-tag":
+      return (await getStore()).addTag(request.id, request.tag);
+    case "remove-tag":
+      return (await getStore()).removeTag(request.id, request.tag);
     case "sync": {
       const report = await runSync();
       return { pulled: report.pulled, uploaded: report.uploaded, failed: report.failed };

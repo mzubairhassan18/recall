@@ -1,4 +1,5 @@
-import type { CaptureType, SearchResult } from "@recall/shared-types";
+import type { CaptureType } from "@recall/shared-types";
+import type { CaptureSummary } from "./db.js";
 
 export interface StatusData {
   configured: boolean;
@@ -6,6 +7,7 @@ export interface StatusData {
   localOnly: boolean;
   relayUrl: string | null;
   count: number;
+  archivedCount: number;
   syncing: boolean;
   lastSyncAt: number | null;
   lastSyncError: string | null;
@@ -19,7 +21,30 @@ export interface CaptureDetail {
   url: string | null;
   type: CaptureType;
   created_at: number;
+  favorite: boolean;
+  archived: boolean;
+  tags: string[];
   thumbnail_b64?: string;
+}
+
+export interface CaptureQuery {
+  captureType?: CaptureType;
+  domain?: string;
+  favoritesOnly?: boolean;
+  tag?: string;
+  descending?: boolean;
+}
+
+export interface ArchiveResult {
+  count: number;
+}
+
+export interface MutationResult {
+  updated: boolean;
+}
+
+export interface NewCaptureResult {
+  id: string;
 }
 
 export type PopupRequest =
@@ -28,12 +53,32 @@ export type PopupRequest =
   | { type: "setup"; passphrase: string }
   | { type: "unlock"; passphrase: string }
   | { type: "lock" }
-  | { type: "search"; query: string }
-  | { type: "timeline"; captureType?: CaptureType; domain?: string }
+  | ({ type: "search"; query: string } & CaptureQuery)
+  | ({ type: "timeline" } & CaptureQuery)
+  | { type: "archived" }
+  | { type: "tags" }
   | { type: "capture"; id: string }
   | { type: "save-page" }
+  | { type: "new-capture"; text: string; tags?: string[]; favorite?: boolean }
+  | { type: "set-favorite"; id: string; favorite: boolean }
+  | { type: "set-archived"; id: string; archived: boolean }
+  | { type: "archive-many"; ids: string[] }
+  | { type: "restore-many"; ids: string[] }
+  | { type: "add-tag"; id: string; tag: string }
+  | { type: "remove-tag"; id: string; tag: string }
   | { type: "sync" };
 
 export type PopupResponse =
-  | { ok: true; data?: StatusData | SearchResult[] | CaptureDetail | { pulled: number; uploaded: number; failed: number } }
+  | {
+      ok: true;
+      data?:
+        | StatusData
+        | CaptureSummary[]
+        | CaptureDetail
+        | string[]
+        | ArchiveResult
+        | MutationResult
+        | NewCaptureResult
+        | { pulled: number; uploaded: number; failed: number };
+    }
   | { ok: false; error: string };

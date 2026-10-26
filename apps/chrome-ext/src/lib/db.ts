@@ -40,6 +40,8 @@ export interface CaptureRow {
   thumbnail: Uint8Array | null;
   blob_ref: string;
   synced: 0 | 1;
+  favorite: 0 | 1;
+  archived: 0 | 1;
 }
 
 export interface NewCapture {
@@ -53,11 +55,24 @@ export interface NewCapture {
   thumbnail?: Uint8Array | null;
   blob_ref?: string;
   synced?: 0 | 1;
+  favorite?: 0 | 1;
+  archived?: 0 | 1;
+  tags?: string[];
+}
+
+/** Search/timeline row with local-only metadata. */
+export interface CaptureSummary extends SearchResult {
+  favorite: boolean;
+  archived: boolean;
+  tags: string[];
 }
 
 export interface TimelineFilter {
   type?: CaptureType;
   domain?: string;
+  favoritesOnly?: boolean;
+  tag?: string;
+  descending?: boolean;
   limit?: number;
 }
 
@@ -71,7 +86,9 @@ CREATE TABLE IF NOT EXISTS captures (
   url TEXT, title TEXT, text TEXT, ocr_text TEXT,
   thumbnail BLOB,
   blob_ref TEXT NOT NULL,
-  synced INTEGER NOT NULL DEFAULT 0
+  synced INTEGER NOT NULL DEFAULT 0,
+  favorite INTEGER NOT NULL DEFAULT 0,
+  archived INTEGER NOT NULL DEFAULT 0
 );
 CREATE INDEX IF NOT EXISTS idx_captures_created_at ON captures(created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_captures_type ON captures(type);
@@ -104,7 +121,17 @@ CREATE TRIGGER IF NOT EXISTS captures_au AFTER UPDATE ON captures BEGIN
 END;
 `;
 
-const COLUMNS = "id, created_at, type, url, title, text, ocr_text, thumbnail, blob_ref, synced";
+const CAPTURE_INDEXES = `
+CREATE INDEX IF NOT EXISTS idx_captures_favorite ON captures(favorite);
+CREATE INDEX IF NOT EXISTS idx_captures_archived ON captures(archived);
+CREATE INDEX IF NOT EXISTS idx_annotations_kind_value ON annotations(kind, value);
+`;
+
+const COLUMNS =
+  "id, created_at, type, url, title, text, ocr_text, thumbnail, blob_ref, synced, favorite, archived";
+
+const MAX_TAGS = 8;
+const MAX_TAG_LENGTH = 32;
 
 let sqlitePromise: Promise<Sqlite3Static> | null = null;
 
@@ -147,6 +174,8 @@ export class CaptureStore {
       if (rc !== 0) throw new Error("sqlite-deserialize-failed");
     }
     db.exec(SCHEMA);
+    migrateSchema(db);
+    db.exec(CAPTURE_INDEXES);
     const store = new CaptureStore(db, sqlite, persistence);
     await store.persist();
     return store;
@@ -160,7 +189,7 @@ export class CaptureStore {
   async insertCapture(input: NewCapture): Promise<boolean> {
     const rows = this.rows<{ id: string }>(
       `INSERT OR IGNORE INTO captures (${COLUMNS})
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
        RETURNING id`,
       [
         input.id,
@@ -173,9 +202,14 @@ export class CaptureStore {
         input.thumbnail ?? null,
         input.blob_ref ?? input.id,
         input.synced ?? 0,
+        input.favorite ?? 0,
+        input.archived ?? 0,
       ],
     );
     if (rows.length === 0) return false;
+    for (const tag of normalizeTags(input.tags ?? [])) {
+      this.insertTagSync(input.id, tag);
+    }
     await this.persist();
     return true;
   }
@@ -190,7 +224,15 @@ export class CaptureStore {
   }
 
   count(): number {
-    return Number(this.rows<{ n: number }>("SELECT COUNT(*) AS n FROM captures")[0]?.n ?? 0);
+    return Number(
+      this.rows<{ n: number }>("SELECT COUNT(*) AS n FROM captures WHERE archived = 0")[0]?.n ?? 0,
+    );
+  }
+
+  countArchived(): number {
+    return Number(
+      this.rows<{ n: number }>("SELECT COUNT(*) AS n FROM captures WHERE archived = 1")[0]?.n ?? 0,
+    );
   }
 
   listUnsynced(limit = 50): CaptureRow[] {
@@ -207,7 +249,7 @@ export class CaptureStore {
 
   listRecent(filter: TimelineFilter = {}): CaptureRow[] {
     const limit = Math.max(1, Math.min(500, filter.limit ?? 100));
-    const clauses: string[] = [];
+    const clauses: string[] = ["archived = 0"];
     const params: BindValue[] = [];
     if (filter.type) {
       clauses.push("type = ?");
@@ -217,33 +259,122 @@ export class CaptureStore {
       clauses.push("lower(coalesce(url, '')) LIKE ?");
       params.push(`%${filter.domain.trim().toLowerCase()}%`);
     }
-    const where = clauses.length > 0 ? `WHERE ${clauses.join(" AND ")}` : "";
+    if (filter.favoritesOnly) {
+      clauses.push("favorite = 1");
+    }
+    if (filter.tag && filter.tag.trim()) {
+      clauses.push(
+        `EXISTS (
+          SELECT 1 FROM annotations a
+          WHERE a.target_id = captures.id AND a.kind = 'tag'
+            AND lower(coalesce(a.value, '')) = lower(?)
+        )`,
+      );
+      params.push(filter.tag.trim());
+    }
+    const direction = filter.descending === false ? "ASC" : "DESC";
     params.push(limit);
     return this.rows<CaptureRow>(
-      `SELECT ${COLUMNS} FROM captures ${where} ORDER BY created_at DESC, id ASC LIMIT ?`,
+      `SELECT ${COLUMNS} FROM captures
+       WHERE ${clauses.join(" AND ")}
+       ORDER BY created_at ${direction}, id ASC LIMIT ?`,
       params,
     ).map(normalizeRow);
   }
 
-  timeline(filter: TimelineFilter = {}): SearchResult[] {
-    return this.listRecent(filter).map((row) => {
-      const hit = toHit(row, 0);
-      const result: SearchResult = {
-        id: row.id,
-        title: displayTitle(hit),
-        snippet: makeSnippet(hit, []),
-        created_at: row.created_at,
-        type: row.type,
-        score: 0,
-      };
-      if (row.url) result.url = row.url;
-      if (row.thumbnail) result.thumbnail_b64 = bytesToBase64(row.thumbnail);
-      return result;
-    });
+  timeline(filter: TimelineFilter = {}): CaptureSummary[] {
+    const rows = this.listRecent(filter);
+    const tags = this.tagsByTarget(rows.map((row) => row.id));
+    return rows.map((row) => this.toSummary(row, tags.get(row.id) ?? []));
   }
 
-  search(query: string, synonyms: SynonymIndex, now = Date.now()): Promise<SearchResult[]> {
-    return runSearch(query, { adapters: this.adapters, synonyms, now });
+  archived(limit = 200): CaptureSummary[] {
+    const rows = this.rows<CaptureRow>(
+      `SELECT ${COLUMNS} FROM captures WHERE archived = 1
+       ORDER BY created_at DESC, id ASC LIMIT ?`,
+      [Math.max(1, Math.min(500, limit))],
+    ).map(normalizeRow);
+    const tags = this.tagsByTarget(rows.map((row) => row.id));
+    return rows.map((row) => this.toSummary(row, tags.get(row.id) ?? []));
+  }
+
+  async search(
+    query: string,
+    synonyms: SynonymIndex,
+    now = Date.now(),
+    filter: TimelineFilter = {},
+  ): Promise<CaptureSummary[]> {
+    const results = await runSearch(query, { adapters: this.adapters, synonyms, now });
+    const enriched = this.enrich(results);
+    return applyFilters(enriched, filter);
+  }
+
+  allTags(): string[] {
+    return this.rows<{ value: string }>(
+      `SELECT DISTINCT a.value FROM annotations a
+       JOIN captures c ON c.id = a.target_id
+       WHERE a.kind = 'tag' AND c.archived = 0
+         AND a.value IS NOT NULL AND a.value != ''
+       ORDER BY a.value COLLATE NOCASE`,
+    ).map((row) => row.value);
+  }
+
+  tagsFor(id: string): string[] {
+    return this.rows<{ value: string | null }>(
+      `SELECT value FROM annotations
+       WHERE target_id = ? AND kind = 'tag'
+       ORDER BY created_at ASC, rowid ASC`,
+      [id],
+    )
+      .map((row) => row.value)
+      .filter((value): value is string => Boolean(value && value.trim()));
+  }
+
+  async setFavorite(id: string, favorite: boolean): Promise<boolean> {
+    const rows = this.rows<{ id: string }>(
+      "UPDATE captures SET favorite = ? WHERE id = ? RETURNING id",
+      [favorite ? 1 : 0, id],
+    );
+    if (rows.length === 0) return false;
+    await this.persist();
+    return true;
+  }
+
+  async setArchived(id: string, archived: boolean): Promise<boolean> {
+    const rows = this.rows<{ id: string }>(
+      "UPDATE captures SET archived = ? WHERE id = ? RETURNING id",
+      [archived ? 1 : 0, id],
+    );
+    if (rows.length === 0) return false;
+    await this.persist();
+    return true;
+  }
+
+  async archiveMany(ids: string[]): Promise<number> {
+    return this.setArchivedMany(ids, true);
+  }
+
+  async restoreMany(ids: string[]): Promise<number> {
+    return this.setArchivedMany(ids, false);
+  }
+
+  async addTag(id: string, value: string): Promise<string[]> {
+    const tag = normalizeTag(value);
+    if (!tag || !this.hasCapture(id)) return this.tagsFor(id);
+    this.insertTagSync(id, tag);
+    await this.persist();
+    return this.tagsFor(id);
+  }
+
+  async removeTag(id: string, value: string): Promise<string[]> {
+    const tag = normalizeTag(value);
+    if (!tag) return this.tagsFor(id);
+    const rows = this.rows<{ id: string }>(
+      "DELETE FROM annotations WHERE target_id = ? AND kind = 'tag' AND value = ? RETURNING id",
+      [id, tag],
+    );
+    if (rows.length > 0) await this.persist();
+    return this.tagsFor(id);
   }
 
   exportBytes(): Uint8Array {
@@ -254,6 +385,101 @@ export class CaptureStore {
     this.db.close();
   }
 
+  private async setArchivedMany(ids: string[], archived: boolean): Promise<number> {
+    const unique = [...new Set(ids.filter((id) => typeof id === "string" && id.length > 0))].slice(
+      0,
+      500,
+    );
+    if (unique.length === 0) return 0;
+    const placeholders = unique.map(() => "?").join(", ");
+    const rows = this.rows<{ id: string }>(
+      `UPDATE captures SET archived = ?
+       WHERE id IN (${placeholders}) AND archived = ?
+       RETURNING id`,
+      [archived ? 1 : 0, ...unique, archived ? 0 : 1],
+    );
+    if (rows.length > 0) await this.persist();
+    return rows.length;
+  }
+
+  private toSummary(row: CaptureRow, tags: string[]): CaptureSummary {
+    const hit = toHit(row, 0);
+    const result: CaptureSummary = {
+      id: row.id,
+      title: displayTitle(hit),
+      snippet: makeSnippet(hit, []),
+      created_at: row.created_at,
+      type: row.type,
+      score: 0,
+      favorite: row.favorite === 1,
+      archived: row.archived === 1,
+      tags,
+    };
+    if (row.url) result.url = row.url;
+    if (row.thumbnail) result.thumbnail_b64 = bytesToBase64(row.thumbnail);
+    return result;
+  }
+
+  private enrich(results: SearchResult[]): CaptureSummary[] {
+    if (results.length === 0) return [];
+    const ids = [...new Set(results.map((result) => result.id))];
+    const placeholders = ids.map(() => "?").join(", ");
+    const rows = this.rows<CaptureRow>(
+      `SELECT ${COLUMNS} FROM captures WHERE id IN (${placeholders})`,
+      ids,
+    ).map(normalizeRow);
+    const byId = new Map(rows.map((row) => [row.id, row]));
+    const tags = this.tagsByTarget(ids);
+    const enriched: CaptureSummary[] = [];
+    for (const result of results) {
+      const row = byId.get(result.id);
+      if (!row || row.archived === 1) continue;
+      enriched.push({
+        ...result,
+        favorite: row.favorite === 1,
+        archived: false,
+        tags: tags.get(row.id) ?? [],
+      });
+    }
+    return enriched;
+  }
+
+  private tagsByTarget(ids: string[]): Map<string, string[]> {
+    const map = new Map<string, string[]>();
+    const unique = [...new Set(ids)];
+    if (unique.length === 0) return map;
+    const placeholders = unique.map(() => "?").join(", ");
+    const rows = this.rows<{ target_id: string; value: string | null }>(
+      `SELECT target_id, value FROM annotations
+       WHERE target_id IN (${placeholders}) AND kind = 'tag'
+       ORDER BY created_at ASC, rowid ASC`,
+      unique,
+    );
+    for (const row of rows) {
+      if (!row.value || !row.value.trim()) continue;
+      const values = map.get(row.target_id) ?? [];
+      if (!values.includes(row.value)) values.push(row.value);
+      map.set(row.target_id, values);
+    }
+    return map;
+  }
+
+  private insertTagSync(id: string, tag: string): void {
+    const existing = this.tagsFor(id);
+    if (
+      existing.length >= MAX_TAGS ||
+      existing.some((value) => value.toLowerCase() === tag.toLowerCase())
+    ) {
+      return;
+    }
+    this.rows<{ id: string }>(
+      `INSERT INTO annotations (id, target_id, kind, value, created_at)
+       VALUES (?, ?, 'tag', ?, ?)
+       RETURNING id`,
+      [crypto.randomUUID(), id, tag, Date.now()],
+    );
+  }
+
   private async ftsQuery(match: string, limit: number): Promise<SearchHit[]> {
     if (!match) return [];
     const rows = this.rows<HitRow>(
@@ -261,7 +487,7 @@ export class CaptureStore {
               -bm25(captures_fts) AS score
        FROM captures_fts
        JOIN captures c ON c.rowid = captures_fts.rowid
-       WHERE captures_fts MATCH ?
+       WHERE captures_fts MATCH ? AND c.archived = 0
        ORDER BY score DESC, c.created_at DESC, c.id ASC
        LIMIT ?`,
       [match, limit],
@@ -286,7 +512,7 @@ export class CaptureStore {
     params.push(limit);
     const rows = this.rows<HitRow>(
       `SELECT ${COLUMNS}, 0.5 AS score
-       FROM captures WHERE ${clauses.join(" OR ")}
+       FROM captures WHERE archived = 0 AND (${clauses.join(" OR ")})
        ORDER BY created_at DESC, id ASC LIMIT ?`,
       params,
     );
@@ -295,7 +521,8 @@ export class CaptureStore {
 
   private async recentQuery(limit: number): Promise<SearchHit[]> {
     const rows = this.rows<HitRow>(
-      `SELECT ${COLUMNS}, 1 AS score FROM captures ORDER BY created_at DESC, id ASC LIMIT ?`,
+      `SELECT ${COLUMNS}, 1 AS score FROM captures
+       WHERE archived = 0 ORDER BY created_at DESC, id ASC LIMIT ?`,
       [limit],
     );
     return rows.map((row) => toHit(row, 1));
@@ -312,6 +539,24 @@ export class CaptureStore {
       },
     });
     return out;
+  }
+}
+
+function migrateSchema(db: Database): void {
+  const columns = new Set<string>();
+  db.exec({
+    sql: "PRAGMA table_info(captures)",
+    rowMode: "object",
+    callback: (row) => {
+      const name = (row as { name?: unknown }).name;
+      if (typeof name === "string") columns.add(name);
+    },
+  });
+  if (!columns.has("favorite")) {
+    db.exec("ALTER TABLE captures ADD COLUMN favorite INTEGER NOT NULL DEFAULT 0");
+  }
+  if (!columns.has("archived")) {
+    db.exec("ALTER TABLE captures ADD COLUMN archived INTEGER NOT NULL DEFAULT 0");
   }
 }
 
@@ -351,6 +596,8 @@ function normalizeRow(row: CaptureRow): CaptureRow {
     ...row,
     created_at: Number(row.created_at),
     synced: Number(row.synced) === 1 ? 1 : 0,
+    favorite: Number(row.favorite) === 1 ? 1 : 0,
+    archived: Number(row.archived) === 1 ? 1 : 0,
     thumbnail:
       thumbnail instanceof Uint8Array
         ? thumbnail
@@ -358,6 +605,45 @@ function normalizeRow(row: CaptureRow): CaptureRow {
           ? new Uint8Array(thumbnail)
           : null,
   };
+}
+
+function applyFilters(rows: CaptureSummary[], filter: TimelineFilter): CaptureSummary[] {
+  let filtered = rows;
+  if (filter.type) filtered = filtered.filter((row) => row.type === filter.type);
+  if (filter.domain && filter.domain.trim()) {
+    const domain = filter.domain.trim().toLowerCase();
+    filtered = filtered.filter((row) => (row.url ?? "").toLowerCase().includes(domain));
+  }
+  if (filter.favoritesOnly) filtered = filtered.filter((row) => row.favorite);
+  if (filter.tag && filter.tag.trim()) {
+    const tag = filter.tag.trim().toLowerCase();
+    filtered = filtered.filter((row) => row.tags.some((value) => value.toLowerCase() === tag));
+  }
+  if (filter.descending === undefined) {
+    if (filter.limit === undefined) return filtered;
+    return filtered.slice(0, Math.max(1, Math.min(500, filter.limit)));
+  }
+  const direction = filter.descending ? -1 : 1;
+  const sorted = [...filtered].sort(
+    (a, b) => direction * (a.created_at - b.created_at) || a.id.localeCompare(b.id),
+  );
+  if (filter.limit === undefined) return sorted;
+  return sorted.slice(0, Math.max(1, Math.min(500, filter.limit)));
+}
+
+function normalizeTag(value: string): string | null {
+  const tag = value.trim().toLowerCase().slice(0, MAX_TAG_LENGTH);
+  return tag.length > 0 ? tag : null;
+}
+
+function normalizeTags(values: string[]): string[] {
+  const tags: string[] = [];
+  for (const value of values) {
+    const tag = normalizeTag(value);
+    if (tag && !tags.includes(tag)) tags.push(tag);
+    if (tags.length >= MAX_TAGS) break;
+  }
+  return tags;
 }
 
 function escapeLike(value: string): string {

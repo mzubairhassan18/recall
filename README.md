@@ -133,6 +133,11 @@ pnpm --filter @recall/chrome-ext build
 # chrome://extensions -> Developer mode -> Load unpacked -> apps/chrome-ext/dist
 ```
 
+The popup supports typed captures, always-visible search, grid/timeline views, type/domain/tag
+filters, favorites, newest/oldest sorting, reversible archive/restore, and multi-select archive.
+Tags, favorites, and archive state stay on the device and are never added to the encrypted sync
+payload.
+
 ### Desktop
 
 ```bash

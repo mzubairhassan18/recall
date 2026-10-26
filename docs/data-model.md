@@ -13,7 +13,9 @@ CREATE TABLE captures (
   url TEXT, title TEXT, text TEXT, ocr_text TEXT,
   thumbnail BLOB,
   blob_ref TEXT NOT NULL,      -- R2 object key == capture id
-  synced INTEGER NOT NULL DEFAULT 0
+  synced INTEGER NOT NULL DEFAULT 0,
+  favorite INTEGER NOT NULL DEFAULT 0,
+  archived INTEGER NOT NULL DEFAULT 0
 );
 
 CREATE VIRTUAL TABLE captures_fts USING fts5(
@@ -45,6 +47,13 @@ CREATE TABLE annotations (
 - Search adapters only ever read `captures` / `captures_fts`; they never decrypt.
 - `annotations` are local-only in v1 (no relay route). They exist so tags/notes/done do not
   require a schema migration later.
+- Tags use `annotations.kind = 'tag'`, are normalized to lowercase, and are capped at 8 tags
+  of 32 characters per capture.
+- `favorite` and `archived` are local-only `0 | 1` flags. Archive is reversible; Recall does
+  not hard-delete captures from the timeline. Active lists, counts, and search adapters filter
+  `archived = 0`; the archive screen filters `archived = 1`.
+- Tags, favorites, and archive state never enter the encrypted sync payload. The relay sees
+  the same `{type,url,title,text,ocr_text,thumbnail_b64}` payload as before.
 
 ## Indexes
 
@@ -52,5 +61,8 @@ CREATE TABLE annotations (
 CREATE INDEX idx_captures_created_at ON captures(created_at DESC);
 CREATE INDEX idx_captures_type ON captures(type);
 CREATE INDEX idx_captures_synced ON captures(synced) WHERE synced = 0;
+CREATE INDEX idx_captures_favorite ON captures(favorite);
+CREATE INDEX idx_captures_archived ON captures(archived);
 CREATE INDEX idx_annotations_target ON annotations(target_id);
+CREATE INDEX idx_annotations_kind_value ON annotations(kind, value);
 ```

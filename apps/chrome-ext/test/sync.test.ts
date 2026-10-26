@@ -150,6 +150,31 @@ describe("sync", () => {
     target.close();
   });
 
+  it("keeps tags, favorites, and archive state out of the encrypted payload", async () => {
+    const { key } = await testKey();
+    const store = await CaptureStore.open(new MemoryPersistence());
+    const relay = new FakeRelay();
+    const id = "55555555-5555-4555-8555-555555555555";
+    await store.insertCapture({
+      id,
+      created_at: 1_700_000_200_000,
+      type: "text",
+      text: "local metadata stays local",
+      favorite: 1,
+      archived: 1,
+      tags: ["private", "local-only"],
+      synced: 0,
+    });
+
+    await syncNow({ store, key, client: relay, config: config() });
+    const uploaded = relay.blobs.get(id);
+    expect(uploaded).toBeDefined();
+    const payload = await decrypt(key, uploaded!.envelope);
+    expect(payload).toEqual({ type: "text", text: "local metadata stays local" });
+    expect(store.getCapture(id)).toMatchObject({ favorite: 1, archived: 1, synced: 1 });
+    store.close();
+  });
+
   it("makes no network calls in LOCAL_ONLY mode", async () => {
     const { key } = await testKey();
     const store = await CaptureStore.open(new MemoryPersistence());
