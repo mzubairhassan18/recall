@@ -14,6 +14,10 @@ apps/chrome-ext/src/lib/relay-defaults.ts
 apps/android/app/src/main/java/com/recall/app/config/RelayDefaults.kt
 coverage/
 release/
+# Source walkthrough recordings; compressed copies live in docs/assets/video.
+/chrome-extension.mp4
+/desktop.mp4
+/mobile.mp4
 .DS_Store
 apps/android/.gradle/
 apps/android/app/build/

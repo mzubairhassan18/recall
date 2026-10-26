@@ -46,6 +46,8 @@
     <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/></symbol>
     <symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12.5 4.5 4.5L19 6.5"/></symbol>
     <symbol id="i-chevron" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
+    <symbol id="i-play" viewBox="0 0 24 24"><path d="M8 5.5v13l11-6.5-11-6.5Z" fill="currentColor" stroke="none"/></symbol>
+    <symbol id="i-pause" viewBox="0 0 24 24"><path d="M9 5.5v13M15 5.5v13"/></symbol>
     <symbol id="i-arrow-right" viewBox="0 0 24 24"><path d="M4 12h16"/><path d="m14 6 6 6-6 6"/></symbol>
     <symbol id="i-external" viewBox="0 0 24 24"><path d="M14 4h6v6"/><path d="M20 4 10 14"/><path d="M18 14v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h5"/></symbol>
     <symbol id="i-github" viewBox="0 0 24 24"><path d="M9 19c-4.3 1.4-4.3-2.5-6-3m12 5v-3.5c0-1 .1-1.4-.5-2 2.8-.3 5.5-1.4 5.5-6a4.6 4.6 0 0 0-1.3-3.2 4.2 4.2 0 0 0-.1-3.2s-1.1-.3-3.5 1.3a12.3 12.3 0 0 0-6.2 0C6.5 2.8 5.4 3.1 5.4 3.1a4.2 4.2 0 0 0-.1 3.2A4.6 4.6 0 0 0 4 9.5c0 4.6 2.7 5.7 5.5 6-.6.6-.6 1.2-.5 2V21"/></symbol>
@@ -114,6 +116,7 @@
         <a href="#capture">Capture</a>
         <a href="#how">How it works</a>
         <a href="#privacy">Privacy</a>
+        <a href="#howto">How to use</a>
         <a href="#faq">FAQ</a>
       </nav>
 
@@ -163,11 +166,11 @@
           </p>
         </div>
 
-        <div class="hero-visual" aria-hidden="true">
+        <div class="hero-visual">
           <div class="stage">
             <div class="stage-glow"></div>
 
-            <div class="security-chip">
+            <div class="security-chip" aria-hidden="true">
               <span class="security-chip-icon"><svg class="icon"><use href="#i-shield"/></svg></span>
               <span class="security-chip-copy">
                 <strong>AES-256-GCM</strong>
@@ -177,59 +180,20 @@
 
             <div class="phone">
               <div class="phone-screen">
-                <div class="phone-top">
-                  <span class="mini-brand"><svg class="mini-mark" viewBox="0 0 100 100" aria-hidden="true"><use href="#recall-mark"/></svg>Recall</span>
-                  <svg class="icon mini-lock"><use href="#i-lock"/></svg>
-                </div>
-
-                <div class="mini-search">
-                  <svg class="icon"><use href="#i-search"/></svg>
-                  <span>Search your captures</span>
-                </div>
-
-                <div class="mini-filters">
-                  <span class="is-active">All</span>
-                  <span>Links</span>
-                  <span>Notes</span>
-                </div>
-
-                <p class="mini-label">Recent</p>
-
-                <div class="capture-grid">
-                  <div class="capture-card capture-card--link">
-                    <span class="capture-icon"><svg class="icon"><use href="#i-link"/></svg></span>
-                    <strong>Aurora gradients</strong>
-                    <p>Layered radial light for a calmer interface.</p>
-                    <span class="capture-meta">Link · today</span>
+                <div class="recall-video recall-video--phone" data-recall-video data-autoplay data-playing="false">
+                  <video class="recall-video__media" src="assets/video/mobile.mp4" muted loop playsinline preload="none" poster="assets/video/mobile-poster.jpg" aria-label="Recall on Android: unlock, capture, and find a memory" disablepictureinpicture disableremoteplayback></video>
+                  <button class="recall-video__toggle" type="button" aria-label="Pause Android walkthrough">
+                    <svg class="icon recall-video__icon recall-video__icon--play" aria-hidden="true"><use href="#i-play"/></svg>
+                    <svg class="icon recall-video__icon recall-video__icon--pause" aria-hidden="true"><use href="#i-pause"/></svg>
+                  </button>
+                  <div class="recall-video__timeline">
+                    <input class="recall-video__range" type="range" min="0" max="100" step="0.1" value="0" aria-label="Android walkthrough progress">
                   </div>
-                  <div class="capture-card capture-card--note">
-                    <span class="capture-icon"><svg class="icon"><use href="#i-note"/></svg></span>
-                    <strong>Sourdough schedule</strong>
-                    <p>Feed at 8, 2, and 8. Cold proof overnight.</p>
-                    <span class="capture-meta">Note · today</span>
-                  </div>
-                  <div class="capture-card capture-card--image">
-                    <span class="capture-icon"><svg class="icon"><use href="#i-image"/></svg></span>
-                    <strong>Studio moodboard</strong>
-                    <p>Soft ink, warm light, one bright accent.</p>
-                    <span class="capture-meta">Image · yesterday</span>
-                  </div>
-                  <div class="capture-card capture-card--text">
-                    <span class="capture-icon"><svg class="icon"><use href="#i-clipboard"/></svg></span>
-                    <strong>Passphrase idea</strong>
-                    <p>Four diceware words, kept offline.</p>
-                    <span class="capture-meta">Text · yesterday</span>
-                  </div>
-                </div>
-
-                <div class="mini-paste">
-                  <svg class="icon"><use href="#i-clipboard"/></svg>
-                  <span>Paste</span>
                 </div>
               </div>
             </div>
 
-            <div class="popup">
+            <div class="popup" aria-hidden="true">
               <div class="popup-head">
                 <span class="mini-brand"><svg class="mini-mark" viewBox="0 0 100 100" aria-hidden="true"><use href="#recall-mark"/></svg>Recall</span>
                 <span class="popup-context">Chrome</span>
@@ -481,6 +445,46 @@
       </div>
     </section>
 
+    <section class="section howto" id="howto" aria-labelledby="howto-title">
+      <div class="container">
+        <div class="section-head section-head--center">
+          <p class="eyebrow">How to use</p>
+          <h2 id="howto-title">See it in motion.</h2>
+          <p class="section-sub">Pick a surface and watch the full flow — capture, unlock, and find it again. Each walkthrough loops, muted, so you can jump in anywhere.</p>
+        </div>
+
+        <div class="howto-tabs" role="tablist" aria-label="Recall walkthroughs">
+          <button class="howto-tab is-active" id="howto-tab-desktop" type="button" role="tab" aria-selected="true" aria-controls="howto-panel" tabindex="0" data-howto-tab data-shape="wide" data-src="assets/video/desktop.mp4" data-poster="assets/video/desktop-poster.jpg" data-label="Recall desktop walkthrough">
+            <span class="howto-tab-icon howto-tab-icon--violet"><svg class="icon" aria-hidden="true"><use href="#i-window"/></svg></span>
+            <span class="howto-tab-copy"><strong>Desktop</strong><small>Tray + shortcut</small></span>
+          </button>
+          <button class="howto-tab" id="howto-tab-chrome" type="button" role="tab" aria-selected="false" aria-controls="howto-panel" tabindex="-1" data-howto-tab data-shape="wide" data-src="assets/video/chrome.mp4" data-poster="assets/video/chrome-poster.jpg" data-label="Recall Chrome extension walkthrough">
+            <span class="howto-tab-icon howto-tab-icon--cyan"><svg class="icon" aria-hidden="true"><use href="#i-puzzle"/></svg></span>
+            <span class="howto-tab-copy"><strong>Chrome extension</strong><small>Save from any page</small></span>
+          </button>
+          <button class="howto-tab" id="howto-tab-android" type="button" role="tab" aria-selected="false" aria-controls="howto-panel" tabindex="-1" data-howto-tab data-shape="phone" data-src="assets/video/mobile.mp4" data-poster="assets/video/mobile-poster.jpg" data-label="Recall Android walkthrough">
+            <span class="howto-tab-icon howto-tab-icon--mint"><svg class="icon" aria-hidden="true"><use href="#i-phone"/></svg></span>
+            <span class="howto-tab-copy"><strong>Android</strong><small>Share into Recall</small></span>
+          </button>
+        </div>
+
+        <div class="howto-panel" id="howto-panel" role="tabpanel" aria-labelledby="howto-tab-desktop">
+          <div class="recall-video recall-video--wide" data-recall-video data-autoplay data-playing="false">
+            <video class="recall-video__media" src="assets/video/desktop.mp4" muted loop playsinline preload="none" poster="assets/video/desktop-poster.jpg" aria-label="Recall desktop walkthrough" disablepictureinpicture disableremoteplayback></video>
+            <button class="recall-video__toggle" type="button" aria-label="Pause desktop walkthrough">
+              <svg class="icon recall-video__icon recall-video__icon--play" aria-hidden="true"><use href="#i-play"/></svg>
+              <svg class="icon recall-video__icon recall-video__icon--pause" aria-hidden="true"><use href="#i-pause"/></svg>
+            </button>
+            <div class="recall-video__timeline">
+              <input class="recall-video__range" type="range" min="0" max="100" step="0.1" value="0" aria-label="Desktop walkthrough progress">
+            </div>
+          </div>
+        </div>
+
+        <p class="howto-note"><svg class="icon" aria-hidden="true"><use href="#i-lock"/></svg>Muted walkthroughs. Use the center button to pause or play.</p>
+      </div>
+    </section>
+
     <section class="section" id="faq" aria-labelledby="faq-title">
       <div class="container faq-grid">
         <div class="faq-head">
@@ -554,6 +558,150 @@
     if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) {
       document.querySelectorAll("svg").forEach((svg) => svg.pauseAnimations?.());
     }
+
+    (() => {
+      const reduceMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
+      const saveData = navigator.connection?.saveData === true;
+      const canAutoplay = !reduceMotion && !saveData;
+      const controllers = new Map();
+
+      function createVideoController(wrapper) {
+        const video = wrapper.querySelector("video");
+        const toggle = wrapper.querySelector(".recall-video__toggle");
+        const range = wrapper.querySelector(".recall-video__range");
+        if (!video || !toggle || !range) return null;
+
+        let inView = false;
+        let userPaused = !canAutoplay;
+
+        const setPlaying = (playing) => {
+          wrapper.dataset.playing = playing ? "true" : "false";
+          toggle.setAttribute("aria-label", playing ? "Pause video" : "Play video");
+        };
+
+        const updateProgress = () => {
+          const duration = Number.isFinite(video.duration) && video.duration > 0 ? video.duration : 0;
+          const pct = duration ? Math.min(100, Math.max(0, (video.currentTime / duration) * 100)) : 0;
+          range.value = String(pct);
+          range.style.setProperty("--progress", `${pct}%`);
+        };
+
+        const play = () => {
+          const promise = video.play();
+          if (promise && typeof promise.catch === "function") {
+            promise.catch(() => setPlaying(false));
+          }
+        };
+
+        const autoPlay = () => {
+          if (canAutoplay && !userPaused) play();
+        };
+
+        toggle.addEventListener("click", () => {
+          if (video.paused) {
+            userPaused = false;
+            play();
+          } else {
+            userPaused = true;
+            video.pause();
+          }
+        });
+
+        video.addEventListener("play", () => setPlaying(true));
+        video.addEventListener("pause", () => setPlaying(false));
+        video.addEventListener("timeupdate", updateProgress);
+        video.addEventListener("loadedmetadata", updateProgress);
+        video.addEventListener("durationchange", updateProgress);
+        video.addEventListener("error", () => setPlaying(false));
+
+        range.addEventListener("input", () => {
+          const duration = Number.isFinite(video.duration) ? video.duration : 0;
+          if (duration > 0) {
+            video.currentTime = (Number(range.value) / 100) * duration;
+          }
+          updateProgress();
+        });
+
+        wrapper.addEventListener("click", (event) => {
+          if (event.target.closest("button, input")) return;
+          toggle.click();
+        });
+
+        if ("IntersectionObserver" in window) {
+          const observer = new IntersectionObserver((entries) => {
+            entries.forEach((entry) => {
+              inView = entry.isIntersecting;
+              if (inView) {
+                autoPlay();
+              } else {
+                video.pause();
+              }
+            });
+          }, { threshold: 0.35 });
+          observer.observe(wrapper);
+        } else {
+          inView = true;
+          autoPlay();
+        }
+
+        setPlaying(false);
+        updateProgress();
+
+        return {
+          setSource(src, poster, label) {
+            userPaused = false;
+            video.pause();
+            video.src = src;
+            video.poster = poster;
+            if (label) video.setAttribute("aria-label", label);
+            video.load();
+            setPlaying(false);
+            updateProgress();
+            if (inView) autoPlay();
+          }
+        };
+      }
+
+      document.querySelectorAll("[data-recall-video]").forEach((wrapper) => {
+        const controller = createVideoController(wrapper);
+        if (controller) controllers.set(wrapper, controller);
+      });
+
+      const tabs = Array.from(document.querySelectorAll("[data-howto-tab]"));
+      const panel = document.getElementById("howto-panel");
+      const sectionVideo = panel?.querySelector("[data-recall-video]");
+      const sectionController = sectionVideo ? controllers.get(sectionVideo) : null;
+
+      if (tabs.length && panel && sectionController) {
+        const selectTab = (tab, focus = false) => {
+          tabs.forEach((item) => {
+            const active = item === tab;
+            item.classList.toggle("is-active", active);
+            item.setAttribute("aria-selected", active ? "true" : "false");
+            item.tabIndex = active ? 0 : -1;
+          });
+          panel.setAttribute("aria-labelledby", tab.id);
+          panel.classList.toggle("is-phone", tab.dataset.shape === "phone");
+          sectionController.setSource(tab.dataset.src, tab.dataset.poster, tab.dataset.label);
+          if (focus) tab.focus();
+        };
+
+        tabs.forEach((tab, index) => {
+          tab.addEventListener("click", () => selectTab(tab));
+          tab.addEventListener("keydown", (event) => {
+            const keys = ["ArrowLeft", "ArrowRight", "Home", "End"];
+            if (!keys.includes(event.key)) return;
+            event.preventDefault();
+            let nextIndex = index;
+            if (event.key === "ArrowLeft") nextIndex = (index - 1 + tabs.length) % tabs.length;
+            if (event.key === "ArrowRight") nextIndex = (index + 1) % tabs.length;
+            if (event.key === "Home") nextIndex = 0;
+            if (event.key === "End") nextIndex = tabs.length - 1;
+            selectTab(tabs[nextIndex], true);
+          });
+        });
+      }
+    })();
   </script>
 </body>
 </html>
