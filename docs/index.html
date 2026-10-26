@@ -22,7 +22,7 @@
   <meta property="og:image" content="https://mzubairhassan18.github.io/recall/assets/brand/og-image.png">
   <meta property="og:image:width" content="1200">
   <meta property="og:image:height" content="630">
-  <meta property="og:image:alt" content="Recall — a minimal dark landing page with the Recall mark and the words Your memory, encrypted.">
+  <meta property="og:image:alt" content="Recall — a dark aurora landing page with the Recall mark and the words Your memory, encrypted.">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="Recall — Your memory, encrypted.">
   <meta name="twitter:description" content="Capture a thought, a link, or a screenshot from anywhere. Encrypted on your device. Searchable offline.">
@@ -66,8 +66,12 @@
       <path d="M26 12 H60 Q76 12 85 22.5 Q90 30 90 39 Q90 49 84.5 55.5 Q79 62 66 63.5 L92 90 H71.5 L52 65 H41 V90 H26 V12 Z"/>
     </clipPath>
     <linearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#8B7DFF"/>
-      <stop offset="100%" stop-color="#5F8CFF"/>
+      <stop offset="0%" stop-color="#6E56FF">
+        <animate attributeName="stop-color" values="#6E56FF;#3B82F6;#06B6D4;#EC4899;#6E56FF" dur="6s" repeatCount="indefinite"/>
+      </stop>
+      <stop offset="100%" stop-color="#06B6D4">
+        <animate attributeName="stop-color" values="#06B6D4;#EC4899;#6E56FF;#3B82F6;#06B6D4" dur="6s" repeatCount="indefinite"/>
+      </stop>
     </linearGradient>
   </defs>
 
@@ -78,14 +82,23 @@
   <g clip-path="url(#rClip)">
     <!-- top → bottom -->
     <g>
+      <animateTransform attributeName="transform" type="translate"
+        values="0,110; 0,-15; 0,-15; 0,110"
+        keyTimes="0;0.35;0.60;1" dur="5s" repeatCount="indefinite"/>
       <g>
+        <animateTransform attributeName="transform" type="translate"
+          values="-35,0; 35,0; -35,0" dur="1.8s" repeatCount="indefinite"/>
         <path d="M-20 30 Q10 5 40 30 T100 30 T160 30 V130 H-20 Z" fill="url(#grad)"/>
       </g>
     </g>
     <!-- right → left + bottom → top -->
     <g opacity="0.6">
+      <animateTransform attributeName="transform" type="translate"
+        values="115,0; -30,0; -30,0; 115,0"
+        keyTimes="0;0.40;0.65;1" dur="5s" repeatCount="indefinite"/>
       <g transform="rotate(90 50 50)">
-        <path d="M-20 30 Q10 5 40 30 T100 30 T160 30 V130 H-20 Z" fill="#6F7DFF"/>
+        <animateTransform attributeName="transform" type="translate" values="-30,0; 30,0; -30,0" dur="2.1s" repeatCount="indefinite" additive="sum"/>
+        <path d="M-20 30 Q10 5 40 30 T100 30 T160 30 V130 H-20 Z" fill="#EC4899"/>
       </g>
     </g>
   </g>

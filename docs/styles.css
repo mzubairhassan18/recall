@@ -2636,20 +2636,6 @@ body::after {
   background: rgba(14, 21, 35, 0.78);
 }
 
-.hero-mark {
-  filter: drop-shadow(0 16px 34px rgba(124, 108, 255, 0.22));
-}
-
-.brand-mark {
-  filter: drop-shadow(0 6px 14px rgba(124, 108, 255, 0.18));
-}
-
-.mark-stop--1,
-.mark-stop--2,
-.mark-stop--3 {
-  animation: none;
-}
-
 .stage-glow {
   background: radial-gradient(circle at 50% 42%, rgba(124, 108, 255, 0.24), transparent 62%);
   filter: blur(52px);
