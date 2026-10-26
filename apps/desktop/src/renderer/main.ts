@@ -10,6 +10,10 @@ declare global {
 
 const $ = <T extends HTMLElement>(id: string): T => document.getElementById(id) as T;
 
+if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) {
+  document.querySelectorAll<SVGSVGElement>("svg").forEach((svg) => svg.pauseAnimations());
+}
+
 const setupPanel = $("setup-panel");
 const unlockPanel = $("unlock-panel");
 const mainPanel = $("main-panel");
@@ -17,6 +21,8 @@ const tagline = $("tagline");
 const modePill = $("mode-pill");
 const resultsEl = $("results");
 const emptyEl = $("empty");
+const emptyTitleEl = $("empty-title");
+const emptyCopyEl = $("empty-copy");
 const searchInput = $<HTMLInputElement>("search");
 const filtersEl = $("filters");
 const typeFilter = $<HTMLSelectElement>("filter-type");
@@ -59,6 +65,12 @@ function messageFor(code: string): string {
 /* panels                                                              */
 /* ------------------------------------------------------------------ */
 
+function setButtonLabel(button: HTMLButtonElement, label: string): void {
+  const target = button.querySelector<HTMLElement>(".btn-label");
+  if (target) target.textContent = label;
+  else button.textContent = label;
+}
+
 function showPanel(panel: HTMLElement): void {
   for (const section of [setupPanel, unlockPanel, mainPanel]) {
     section.hidden = section !== panel;
@@ -72,7 +84,7 @@ function applyStatus(next: StatusData): void {
     : "Your encrypted memory";
 
   modePill.hidden = !next.configured;
-  modePill.textContent = next.localOnly ? "Offline only" : "Relay";
+  $("mode-label").textContent = next.localOnly ? "Offline only" : "Relay";
   modePill.classList.toggle("online", !next.localOnly);
 
   if (!next.configured) {
@@ -146,11 +158,14 @@ async function refresh(): Promise<void> {
 
 function renderResults(rows: SearchResult[], query: string): void {
   resultsEl.replaceChildren();
-  emptyEl.hidden = rows.length > 0;
-  if (rows.length === 0) {
-    emptyEl.textContent = query
-      ? "Nothing matched — the fallback should have caught that. Try another word."
-      : "No captures yet. Copy text, then press Ctrl+Shift+R.";
+  const isEmpty = rows.length === 0;
+  resultsEl.hidden = isEmpty;
+  emptyEl.hidden = !isEmpty;
+  if (isEmpty) {
+    emptyTitleEl.textContent = query ? "No matches" : "Your memory starts here";
+    emptyCopyEl.textContent = query
+      ? "Try another word, or search by what it felt like."
+      : "Copy text or an image, then press Ctrl+Shift+R. Everything stays encrypted on this device.";
     return;
   }
 
@@ -193,6 +208,7 @@ function renderResults(rows: SearchResult[], query: string): void {
     if (Date.now() - row.created_at > 365 * 86_400_000) time.className = "faded";
     meta.appendChild(time);
     const kind = document.createElement("span");
+    kind.className = "kind";
     kind.textContent = row.type;
     meta.appendChild(kind);
     body.appendChild(meta);
@@ -255,7 +271,7 @@ $("setup-form").addEventListener("submit", async (event) => {
   const passphrase = $<HTMLInputElement>("setup-passphrase").value;
 
   submit.disabled = true;
-  submit.textContent = "Deriving key…";
+  setButtonLabel(submit, "Deriving key…");
   try {
     const next = await window.recall.setup({ passphrase });
     $<HTMLInputElement>("setup-passphrase").value = "";
@@ -266,7 +282,7 @@ $("setup-form").addEventListener("submit", async (event) => {
     errorEl.hidden = false;
   } finally {
     submit.disabled = false;
-    submit.textContent = "Create encrypted store";
+    setButtonLabel(submit, "Create encrypted store");
   }
 });
 
@@ -278,7 +294,7 @@ $("unlock-form").addEventListener("submit", async (event) => {
 
   const passphrase = $<HTMLInputElement>("unlock-passphrase").value;
   submit.disabled = true;
-  submit.textContent = "Deriving key…";
+  setButtonLabel(submit, "Deriving key…");
   try {
     const next = await window.recall.unlock(passphrase);
     $<HTMLInputElement>("unlock-passphrase").value = "";
@@ -289,7 +305,7 @@ $("unlock-form").addEventListener("submit", async (event) => {
     errorEl.hidden = false;
   } finally {
     submit.disabled = false;
-    submit.textContent = "Unlock";
+    setButtonLabel(submit, "Unlock");
   }
 });
 
@@ -326,15 +342,15 @@ $("save-clipboard").addEventListener("click", async () => {
   button.disabled = true;
   try {
     const result = await window.recall.saveClipboard();
-    button.textContent = result.saved ? "Saved ✓" : "Nothing to save";
-    setTimeout(() => (button.textContent = "Capture clipboard"), 1400);
+    setButtonLabel(button, result.saved ? "Saved ✓" : "Nothing to save");
+    setTimeout(() => setButtonLabel(button, "Capture clipboard"), 1400);
     if (result.saved) {
       await refreshStatus();
       await refresh();
     }
   } catch {
-    button.textContent = "Could not save";
-    setTimeout(() => (button.textContent = "Capture clipboard"), 1600);
+    setButtonLabel(button, "Could not save");
+    setTimeout(() => setButtonLabel(button, "Capture clipboard"), 1600);
   } finally {
     button.disabled = false;
   }
@@ -343,7 +359,7 @@ $("save-clipboard").addEventListener("click", async () => {
 $("sync-now").addEventListener("click", async () => {
   const button = $<HTMLButtonElement>("sync-now");
   button.disabled = true;
-  button.textContent = "Syncing…";
+  setButtonLabel(button, "Syncing…");
   try {
     await window.recall.sync();
     await refreshStatus();
@@ -352,7 +368,7 @@ $("sync-now").addEventListener("click", async () => {
     syncInfo.textContent = "sync failed";
   } finally {
     button.disabled = false;
-    button.textContent = "Sync";
+    setButtonLabel(button, "Sync");
   }
 });
 

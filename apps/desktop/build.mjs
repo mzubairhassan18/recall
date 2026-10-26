@@ -1,4 +1,4 @@
-import { copyFileSync, mkdirSync } from "node:fs";
+import { copyFileSync, cpSync, mkdirSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import * as esbuild from "esbuild";
@@ -51,6 +51,7 @@ function copyStatic() {
   copyFileSync(resolve(here, "public/styles.css"), resolve(outdir, "renderer/styles.css"));
   copyFileSync(resolve(here, "assets/tray.png"), resolve(outdir, "assets/tray.png"));
   copyFileSync(resolve(here, "assets/icon.png"), resolve(outdir, "assets/icon.png"));
+  cpSync(resolve(here, "assets/fonts"), resolve(outdir, "assets/fonts"), { recursive: true });
   copyFileSync(resolve(here, "../../docs/test-vectors/synonyms.json"), resolve(outdir, "synonyms.json"));
 }
 

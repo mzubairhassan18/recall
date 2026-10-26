@@ -3,6 +3,7 @@
   "private": true,
   "version": "1.0.0",
   "description": "Capture anything in one gesture. Encrypted, synced, searchable everywhere.",
+  "license": "MIT",
   "packageManager": "pnpm@10.17.1",
   "engines": {
     "node": ">=20.11"

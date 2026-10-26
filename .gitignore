@@ -13,6 +13,7 @@ apps/desktop/src/lib/relay-defaults.ts
 apps/chrome-ext/src/lib/relay-defaults.ts
 apps/android/app/src/main/java/com/recall/app/config/RelayDefaults.kt
 coverage/
+release/
 .DS_Store
 apps/android/.gradle/
 apps/android/app/build/

@@ -1,4 +1,4 @@
-import { readFileSync, mkdirSync, copyFileSync, existsSync } from "node:fs";
+import { readFileSync, mkdirSync, copyFileSync, cpSync, existsSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import * as esbuild from "esbuild";
@@ -24,6 +24,8 @@ function copyStatic() {
   copyFileSync(resolve(here, "manifest.json"), resolve(outdir, "manifest.json"));
   copyFileSync(resolve(here, "public/popup.html"), resolve(outdir, "popup.html"));
   copyFileSync(resolve(here, "public/popup.css"), resolve(outdir, "popup.css"));
+  cpSync(resolve(here, "public/fonts"), resolve(outdir, "fonts"), { recursive: true });
+  cpSync(resolve(here, "public/icons"), resolve(outdir, "icons"), { recursive: true });
   copyFileSync(resolve(here, "../../docs/test-vectors/synonyms.json"), resolve(outdir, "synonyms.json"));
   const wasm = resolve(here, "node_modules/@sqlite.org/sqlite-wasm/dist/sqlite3.wasm");
   if (!existsSync(wasm)) throw new Error(`missing sqlite3.wasm at ${wasm}; run pnpm install`);

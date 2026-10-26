@@ -1,0 +1,372 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Recall mark — motion study</title>
+<style>
+  @font-face {
+    font-family: "Manrope";
+    src: url("fonts/manrope_400.ttf") format("truetype");
+    font-weight: 400;
+    font-style: normal;
+    font-display: swap;
+  }
+  @font-face {
+    font-family: "Manrope";
+    src: url("fonts/manrope_500.ttf") format("truetype");
+    font-weight: 500;
+    font-style: normal;
+    font-display: swap;
+  }
+  @font-face {
+    font-family: "Manrope";
+    src: url("fonts/manrope_600.ttf") format("truetype");
+    font-weight: 600;
+    font-style: normal;
+    font-display: swap;
+  }
+  @font-face {
+    font-family: "Space Grotesk";
+    src: url("fonts/space_grotesk_600.ttf") format("truetype");
+    font-weight: 600;
+    font-style: normal;
+    font-display: swap;
+  }
+
+  :root {
+    color-scheme: dark;
+    --ink-950: #070A12;
+    --ink-900: #0A0F1C;
+    --ink-800: #111827;
+    --ink-700: #1A2336;
+    --text: #F7F9FC;
+    --muted: #A8B3C7;
+    --faint: #6F7C93;
+    --violet: #7C6CFF;
+    --cyan: #22D3EE;
+    --mint: #34D399;
+    --pink: #F472B6;
+    --border: rgba(255, 255, 255, 0.10);
+    --border-strong: rgba(255, 255, 255, 0.16);
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body { height: 100%; }
+
+  body {
+    margin: 0;
+    padding: 32px 20px;
+    display: grid;
+    place-items: center;
+    background:
+      radial-gradient(720px 520px at 18% 8%, rgba(124, 108, 255, 0.20), transparent 62%),
+      radial-gradient(680px 520px at 88% 4%, rgba(34, 211, 238, 0.16), transparent 60%),
+      radial-gradient(760px 560px at 52% 108%, rgba(52, 211, 153, 0.14), transparent 62%),
+      var(--ink-950);
+    color: var(--text);
+    font-family: "Manrope", system-ui, -apple-system, "Segoe UI", sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    background-image:
+      linear-gradient(rgba(255, 255, 255, 0.035) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255, 255, 255, 0.035) 1px, transparent 1px);
+    background-size: 64px 64px;
+    mask-image: radial-gradient(ellipse at 50% 42%, #000 0%, transparent 78%);
+  }
+
+  .study {
+    position: relative;
+    width: min(760px, 100%);
+    padding: 44px 44px 36px;
+    border: 1px solid var(--border);
+    border-radius: 28px;
+    background: linear-gradient(180deg, rgba(26, 35, 54, 0.86), rgba(15, 23, 42, 0.78));
+    box-shadow: 0 18px 50px rgba(0, 0, 0, 0.32);
+    backdrop-filter: blur(18px);
+    text-align: center;
+  }
+
+  .eyebrow {
+    margin: 0 0 28px;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--faint);
+  }
+
+  .mark-stage {
+    display: grid;
+    place-items: center;
+    width: 100%;
+    margin: 0 auto 24px;
+  }
+
+  .recall-mark {
+    width: 240px;
+    height: 240px;
+    display: block;
+    filter: drop-shadow(0 22px 44px rgba(34, 211, 238, 0.14));
+  }
+
+  h1 {
+    margin: 0;
+    font-family: "Space Grotesk", "Manrope", system-ui, sans-serif;
+    font-weight: 600;
+    font-size: 46px;
+    line-height: 1.05;
+    letter-spacing: -0.035em;
+  }
+
+  .tagline {
+    margin: 10px 0 0;
+    font-size: 17px;
+    font-weight: 500;
+    color: var(--muted);
+  }
+
+  .note {
+    margin: 18px auto 0;
+    max-width: 46ch;
+    font-size: 13px;
+    line-height: 1.55;
+    color: var(--faint);
+  }
+
+  .sizes {
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    gap: 30px;
+    margin: 32px 0 0;
+    padding: 22px 16px;
+    border-top: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .size {
+    display: grid;
+    justify-items: center;
+    gap: 9px;
+  }
+
+  .size img {
+    display: block;
+    image-rendering: auto;
+  }
+
+  .size span {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    color: var(--faint);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .controls {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 14px;
+    margin-top: 24px;
+  }
+
+  .motion-toggle {
+    appearance: none;
+    min-height: 44px;
+    padding: 0 20px;
+    border: 1px solid var(--border-strong);
+    border-radius: 14px;
+    background: rgba(26, 35, 54, 0.7);
+    color: var(--text);
+    font: 600 13px/1 "Manrope", system-ui, sans-serif;
+    letter-spacing: 0.01em;
+    cursor: pointer;
+    transition: background-color 180ms ease-out, border-color 180ms ease-out;
+  }
+
+  .motion-toggle:hover { background: var(--ink-700); border-color: rgba(34, 211, 238, 0.55); }
+  .motion-toggle:focus-visible { outline: 2px solid var(--cyan); outline-offset: 3px; }
+
+  .motion-state {
+    font-size: 12px;
+    color: var(--faint);
+  }
+
+  .footnote {
+    margin: 20px 0 0;
+    font-size: 11px;
+    line-height: 1.5;
+    color: var(--faint);
+  }
+
+  /* ---- Brand mark motion hooks (external CSS) ---------------------------- */
+
+  .recall-mark__stop-1 { animation: recall-stop-1 6s ease-in-out infinite; }
+  .recall-mark__stop-2 { animation: recall-stop-2 6s ease-in-out infinite; }
+  .recall-mark__stop-3 { animation: recall-stop-3 6s ease-in-out infinite; }
+
+  .recall-mark__dot-group {
+    transform-box: fill-box;
+    transform-origin: center;
+    animation: recall-dot-pulse 2.8s ease-in-out infinite;
+  }
+
+  .recall-mark__dot-glow { animation: recall-dot-glow 2.8s ease-in-out infinite; }
+
+  @keyframes recall-stop-1 {
+    0%, 100% { stop-color: #7C6CFF; }
+    50%      { stop-color: #8E7CFF; }
+  }
+  @keyframes recall-stop-2 {
+    0%, 100% { stop-color: #22D3EE; }
+    50%      { stop-color: #2FC9E8; }
+  }
+  @keyframes recall-stop-3 {
+    0%, 100% { stop-color: #34D399; }
+    50%      { stop-color: #43D9A4; }
+  }
+  @keyframes recall-dot-pulse {
+    0%, 100% { transform: scale(1); opacity: 1; }
+    50%      { transform: scale(1.16); opacity: 0.86; }
+  }
+  @keyframes recall-dot-glow {
+    0%, 100% { opacity: 0.55; }
+    50%      { opacity: 0.30; }
+  }
+
+  /* Manual pause, used by the demo button. */
+  [data-motion="off"] .recall-mark__stop-1,
+  [data-motion="off"] .recall-mark__stop-2,
+  [data-motion="off"] .recall-mark__stop-3,
+  [data-motion="off"] .recall-mark__dot-group,
+  [data-motion="off"] .recall-mark__dot-glow {
+    animation: none;
+  }
+
+  /* System fallback: the static mark already carries the dot and gradient. */
+  @media (prefers-reduced-motion: reduce) {
+    .recall-mark__stop-1,
+    .recall-mark__stop-2,
+    .recall-mark__stop-3,
+    .recall-mark__dot-group,
+    .recall-mark__dot-glow {
+      animation: none;
+    }
+    .motion-toggle { transition: none; }
+  }
+
+  @media (max-width: 560px) {
+    .study { padding: 32px 22px 28px; border-radius: 24px; }
+    .recall-mark { width: 184px; height: 184px; }
+    h1 { font-size: 38px; }
+    .sizes { gap: 18px; }
+  }
+</style>
+</head>
+<body>
+  <main class="study" id="study">
+    <p class="eyebrow">Brand mark · motion study</p>
+
+    <div class="mark-stage">
+      <svg class="recall-mark" viewBox="0 0 100 100" width="240" height="240" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <!-- NICE R — Geist-grade -->
+    <clipPath id="rClip">
+      <path d="M26 12 H60 Q76 12 85 22.5 Q90 30 90 39 Q90 49 84.5 55.5 Q79 62 66 63.5 L92 90 H71.5 L52 65 H41 V90 H26 V12 Z"/>
+    </clipPath>
+    <linearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#6E56FF">
+        <animate attributeName="stop-color" values="#6E56FF;#3B82F6;#06B6D4;#EC4899;#6E56FF" dur="6s" repeatCount="indefinite"/>
+      </stop>
+      <stop offset="100%" stop-color="#06B6D4">
+        <animate attributeName="stop-color" values="#06B6D4;#EC4899;#6E56FF;#3B82F6;#06B6D4" dur="6s" repeatCount="indefinite"/>
+      </stop>
+    </linearGradient>
+  </defs>
+
+  <!-- base R -->
+  <path d="M26 12 H60 Q76 12 85 22.5 Q90 30 90 39 Q90 49 84.5 55.5 Q79 62 66 63.5 L92 90 H71.5 L52 65 H41 V90 H26 V12 Z" fill="#3B2F86"/>
+
+  <!-- TRUE WAVE FILL -->
+  <g clip-path="url(#rClip)">
+    <!-- top → bottom -->
+    <g>
+      <animateTransform attributeName="transform" type="translate"
+        values="0,110; 0,-15; 0,-15; 0,110"
+        keyTimes="0;0.35;0.60;1" dur="5s" repeatCount="indefinite"/>
+      <g>
+        <animateTransform attributeName="transform" type="translate"
+          values="-35,0; 35,0; -35,0" dur="1.8s" repeatCount="indefinite"/>
+        <path d="M-20 30 Q10 5 40 30 T100 30 T160 30 V130 H-20 Z" fill="url(#grad)"/>
+      </g>
+    </g>
+    <!-- right → left + bottom → top -->
+    <g opacity="0.6">
+      <animateTransform attributeName="transform" type="translate"
+        values="115,0; -30,0; -30,0; 115,0"
+        keyTimes="0;0.40;0.65;1" dur="5s" repeatCount="indefinite"/>
+      <g transform="rotate(90 50 50)">
+        <animateTransform attributeName="transform" type="translate" values="-30,0; 30,0; -30,0" dur="2.1s" repeatCount="indefinite" additive="sum"/>
+        <path d="M-20 30 Q10 5 40 30 T100 30 T160 30 V130 H-20 Z" fill="#EC4899"/>
+      </g>
+    </g>
+  </g>
+</svg>
+
+    </div>
+
+    <h1>Recall</h1>
+    <p class="tagline">Your memory, encrypted.</p>
+    <p class="note">A true wave fills the R: the tide rises over 5s, a pink wash crosses it over 5s, and both surfaces shiver on 1.8s and 2.1s loops. The gradient cycles through violet, blue, cyan, and pink every 6s.</p>
+
+    <div class="sizes" aria-label="Static mark at icon sizes">
+      <div class="size"><img src="recall-mark.svg" width="16" height="16" alt="Recall mark at 16 pixels"><span>16</span></div>
+      <div class="size"><img src="recall-mark.svg" width="32" height="32" alt="Recall mark at 32 pixels"><span>32</span></div>
+      <div class="size"><img src="recall-mark.svg" width="48" height="48" alt="Recall mark at 48 pixels"><span>48</span></div>
+      <div class="size"><img src="recall-mark.svg" width="96" height="96" alt="Recall mark at 96 pixels"><span>96</span></div>
+    </div>
+
+    <div class="controls">
+      <button class="motion-toggle" id="motion-toggle" type="button">Pause motion</button>
+      <span class="motion-state" id="motion-state" aria-live="polite">Motion on</span>
+    </div>
+
+    <p class="footnote">Static app, toolbar, and launcher icons use the non-animated mark. This page is inspiration for the landing page, popup, and desktop shell only.</p>
+  </main>
+
+  <script>
+    (function () {
+      var study = document.getElementById('study');
+      var button = document.getElementById('motion-toggle');
+      var state = document.getElementById('motion-state');
+      var reduced = window.matchMedia('(prefers-reduced-motion: reduce)');
+
+      function setMotion(on) {
+        study.dataset.motion = on ? 'on' : 'off';
+        button.textContent = on ? 'Pause motion' : 'Resume motion';
+        state.textContent = on ? 'Motion on' : 'Motion paused';
+      }
+
+      // Start paused when the system asks for reduced motion.
+      setMotion(!reduced.matches);
+
+      button.addEventListener('click', function () {
+        setMotion(study.dataset.motion !== 'on');
+      });
+
+      reduced.addEventListener('change', function (event) {
+        setMotion(!event.matches);
+      });
+    })();
+  </script>
+</body>
+</html>

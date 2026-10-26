@@ -1,11 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="recall_bg">#0F1115</color>
-    <color name="recall_panel">#171A21</color>
-    <color name="recall_accent">#6EA8FE</color>
-    <color name="recall_accent_deep">#3B5BDB</color>
-    <color name="recall_text">#E7E9EE</color>
-    <color name="recall_muted">#98A0AF</color>
-    <color name="recall_danger">#FF6B6B</color>
-    <color name="ic_launcher_background">#3B5BDB</color>
+    <color name="recall_bg">#070A12</color>
+    <color name="recall_panel">#111827</color>
+    <color name="recall_accent">#7C6CFF</color>
+    <color name="recall_accent_deep">#22D3EE</color>
+    <color name="recall_text">#F7F9FC</color>
+    <color name="recall_muted">#A8B3C7</color>
+    <color name="recall_danger">#FB7185</color>
+    <color name="ic_launcher_background">#7C6CFF</color>
 </resources>

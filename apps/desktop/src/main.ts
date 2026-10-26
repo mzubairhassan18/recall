@@ -492,12 +492,12 @@ async function detail(id: string): Promise<CaptureDetail> {
 
 function createWindow(): void {
   window = new BrowserWindow({
-    width: 980,
-    height: 720,
-    minWidth: 640,
-    minHeight: 480,
+    width: 1100,
+    height: 760,
+    minWidth: 720,
+    minHeight: 560,
     show: false,
-    backgroundColor: "#0f1115",
+    backgroundColor: "#070a12",
     title: "Recall",
     icon: join(here, "assets", "icon.png"),
     autoHideMenuBar: true,

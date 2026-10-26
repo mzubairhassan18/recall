@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Recall — social card source</title>
+<style>
+  @font-face {
+    font-family: "Manrope";
+    src: url("fonts/manrope_500.ttf") format("truetype");
+    font-weight: 500;
+    font-style: normal;
+    font-display: block;
+  }
+  @font-face {
+    font-family: "Space Grotesk";
+    src: url("fonts/space_grotesk_600.ttf") format("truetype");
+    font-weight: 600;
+    font-style: normal;
+    font-display: block;
+  }
+
+  :root {
+    --ink-950: #070A12;
+    --text: #F7F9FC;
+    --muted: #A8B3C7;
+    --violet: #7C6CFF;
+    --cyan: #22D3EE;
+    --mint: #34D399;
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body {
+    width: 1200px;
+    height: 630px;
+    margin: 0;
+    overflow: hidden;
+  }
+
+  body {
+    position: relative;
+    display: grid;
+    place-items: center;
+    background:
+      radial-gradient(760px 560px at 10% -6%, rgba(124, 108, 255, 0.34), transparent 64%),
+      radial-gradient(720px 520px at 96% 2%, rgba(34, 211, 238, 0.24), transparent 62%),
+      radial-gradient(900px 520px at 52% 112%, rgba(52, 211, 153, 0.20), transparent 64%),
+      var(--ink-950);
+    color: var(--text);
+    font-family: "Manrope", system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* Subtle grid, faded away from the lockup. */
+  body::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(255, 255, 255, 0.045) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255, 255, 255, 0.045) 1px, transparent 1px);
+    background-size: 48px 48px;
+    mask-image: radial-gradient(ellipse 62% 70% at 50% 48%, #000 0%, rgba(0, 0, 0, 0.55) 55%, transparent 100%);
+  }
+
+  /* Very soft edge darkening keeps the center calm. */
+  body::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(ellipse 78% 82% at 50% 46%, transparent 38%, rgba(7, 10, 18, 0.55) 100%);
+    pointer-events: none;
+  }
+
+  .lockup {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    align-items: center;
+    gap: 46px;
+    padding: 0 40px;
+  }
+
+  .mark-wrap {
+    position: relative;
+    width: 184px;
+    height: 184px;
+    flex: 0 0 auto;
+  }
+
+  .mark-wrap::before {
+    content: "";
+    position: absolute;
+    inset: -46px;
+    border-radius: 999px;
+    background: radial-gradient(circle, rgba(34, 211, 238, 0.24), rgba(124, 108, 255, 0.10) 48%, transparent 72%);
+    filter: blur(18px);
+  }
+
+  .mark-wrap img {
+    position: relative;
+    display: block;
+    width: 184px;
+    height: 184px;
+    filter: drop-shadow(0 24px 54px rgba(0, 0, 0, 0.38));
+  }
+
+  .copy {
+    position: relative;
+    padding-top: 4px;
+  }
+
+  .wordmark {
+    margin: 0;
+    font-family: "Space Grotesk", "Manrope", system-ui, sans-serif;
+    font-size: 108px;
+    font-weight: 600;
+    line-height: 0.96;
+    letter-spacing: -0.045em;
+    color: var(--text);
+  }
+
+  .tagline {
+    margin: 16px 0 0;
+    font-size: 33px;
+    font-weight: 500;
+    line-height: 1.25;
+    letter-spacing: -0.012em;
+    color: var(--muted);
+    white-space: nowrap;
+  }
+
+  .rule {
+    width: 54px;
+    height: 3px;
+    margin: 24px 0 0;
+    border-radius: 999px;
+    background: linear-gradient(90deg, var(--violet), var(--cyan) 55%, var(--mint));
+    opacity: 0.9;
+  }
+</style>
+</head>
+<body>
+  <div class="lockup">
+    <div class="mark-wrap">
+      <img src="recall-mark-icon.svg" width="184" height="184" alt="">
+    </div>
+    <div class="copy">
+      <p class="wordmark">Recall</p>
+      <p class="tagline">Your memory, encrypted.</p>
+      <div class="rule" aria-hidden="true"></div>
+    </div>
+  </div>
+</body>
+</html>

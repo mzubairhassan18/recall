@@ -1,0 +1,5 @@
+<svg viewBox="0 0 100 100" width="512" height="512" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="recall-mark-mono-title">
+  <title id="recall-mark-mono-title">Recall monochrome mark</title>
+  <desc id="recall-mark-mono-desc">The Recall R as a single white shape for monochrome and themed surfaces.</desc>
+  <path d="M26 12 H60 Q76 12 85 22.5 Q90 30 90 39 Q90 49 84.5 55.5 Q79 62 66 63.5 L92 90 H71.5 L52 65 H41 V90 H26 V12 Z" fill="#FFFFFF"/>
+</svg>

@@ -12,6 +12,9 @@ import androidx.biometric.BiometricManager
 import androidx.biometric.BiometricPrompt
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.FragmentActivity
@@ -30,9 +33,20 @@ class MainActivity : FragmentActivity() {
         setContent {
             RecallTheme {
                 val state by viewModel.state.collectAsStateWithLifecycle()
+                var autoPrompted by rememberSaveable { mutableStateOf(false) }
                 LaunchedEffect(state.configured, state.locked) {
                     if (state.configured && !state.locked) {
                         PendingShare.take()?.let(viewModel::savePendingShare)
+                    }
+                }
+                LaunchedEffect(state.configured, state.locked, state.biometricEnabled) {
+                    if (state.configured && state.locked && state.biometricEnabled) {
+                        if (!autoPrompted) {
+                            autoPrompted = true
+                            authenticate()
+                        }
+                    } else if (!state.locked) {
+                        autoPrompted = false
                     }
                 }
                 LaunchedEffect(state.biometricEnrollRequest) {
@@ -89,7 +103,7 @@ class MainActivity : FragmentActivity() {
         )
         val info = BiometricPrompt.PromptInfo.Builder()
             .setTitle("Unlock Recall")
-            .setSubtitle("Authenticate to unwrap your vault key")
+            .setSubtitle("Touch the sensor to open your memory")
             .setNegativeButtonText("Use PIN or passphrase")
             .setAllowedAuthenticators(BiometricManager.Authenticators.BIOMETRIC_STRONG)
             .build()
@@ -123,7 +137,7 @@ class MainActivity : FragmentActivity() {
         )
         val info = BiometricPrompt.PromptInfo.Builder()
             .setTitle("Enable fingerprint unlock")
-            .setSubtitle("Authenticate once to wrap your vault key")
+            .setSubtitle("Touch the sensor once to wrap your vault key")
             .setNegativeButtonText("Not now")
             .setAllowedAuthenticators(BiometricManager.Authenticators.BIOMETRIC_STRONG)
             .build()

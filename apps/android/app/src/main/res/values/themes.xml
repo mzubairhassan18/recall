@@ -5,7 +5,9 @@
         <item name="android:statusBarColor">@color/recall_bg</item>
         <item name="android:navigationBarColor">@color/recall_bg</item>
         <item name="android:windowLightStatusBar">false</item>
+        <item name="android:windowLightNavigationBar">false</item>
         <item name="android:colorAccent">@color/recall_accent</item>
+        <item name="android:windowActionModeOverlay">true</item>
     </style>
 
     <style name="Theme.Recall.Transparent" parent="Theme.Recall">
