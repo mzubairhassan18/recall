@@ -88,7 +88,10 @@
         </div>
         <div class="topbar-actions">
           <span id="mode-pill" class="pill" hidden><span class="pill-dot"></span><span id="mode-label">Relay</span></span>
-          <button id="archive-open" class="icon-btn header-icon" title="Open archive" aria-label="Open archive">
+          <button id="security-open" class="icon-btn header-icon" title="Security and PIN" aria-label="Security and PIN" hidden>
+            <svg class="icon"><use href="#i-shield"/></svg>
+          </button>
+          <button id="archive-open" class="icon-btn header-icon" title="Open archive" aria-label="Open archive" hidden>
             <svg class="icon"><use href="#i-archive"/></svg>
             <span id="archive-count" class="count-badge" hidden>0</span>
           </button>
@@ -111,7 +114,23 @@
                 <input id="setup-passphrase" type="password" required minlength="8" placeholder="4–6 diceware words" />
               </span>
             </label>
-            <p class="secure-note"><svg class="icon icon-sm"><use href="#i-cloud-off"/></svg> Encrypted sync is on. The relay only ever sees ciphertext.</p>
+            <div class="field-row">
+              <label class="field">
+                <span class="field-label">4-digit PIN</span>
+                <span class="input-wrap">
+                  <svg class="icon field-icon"><use href="#i-lock"/></svg>
+                  <input id="setup-pin" type="password" required inputmode="numeric" pattern="[0-9]{4}" minlength="4" maxlength="4" autocomplete="new-password" placeholder="••••" />
+                </span>
+              </label>
+              <label class="field">
+                <span class="field-label">Confirm PIN</span>
+                <span class="input-wrap">
+                  <svg class="icon field-icon"><use href="#i-lock"/></svg>
+                  <input id="setup-pin-confirm" type="password" required inputmode="numeric" pattern="[0-9]{4}" minlength="4" maxlength="4" autocomplete="new-password" placeholder="••••" />
+                </span>
+              </label>
+            </div>
+            <p class="secure-note"><svg class="icon icon-sm"><use href="#i-cloud-off"/></svg> Encrypted sync is on. The PIN unlocks this browser quickly; the passphrase still protects sync and is your recovery key.</p>
             <button type="submit" id="setup-submit" class="btn btn-primary">
               <span class="btn-label">Create encrypted store</span>
               <svg class="icon"><use href="#i-arrow-right"/></svg>
@@ -129,21 +148,36 @@
           </div>
           <p class="eyebrow"><svg class="icon icon-sm"><use href="#i-lock"/></svg> Welcome back</p>
           <h2>Unlock Recall</h2>
-          <p class="hint">Your captures are encrypted on this device. Enter the passphrase to continue.</p>
-          <form id="unlock-form" autocomplete="off">
+          <p class="hint" id="unlock-hint">Your captures are encrypted on this device. Enter the passphrase to continue.</p>
+          <form id="unlock-pin-form" autocomplete="off">
+            <label class="field">
+              <span class="field-label">4-digit PIN</span>
+              <span class="input-wrap">
+                <svg class="icon field-icon"><use href="#i-lock"/></svg>
+                <input id="unlock-pin" type="password" required inputmode="numeric" pattern="[0-9]{4}" minlength="4" maxlength="4" autocomplete="off" placeholder="••••" />
+              </span>
+            </label>
+            <button type="submit" id="unlock-pin-submit" class="btn btn-primary">
+              <span class="btn-label">Unlock</span>
+              <svg class="icon"><use href="#i-arrow-right"/></svg>
+            </button>
+            <button type="button" id="unlock-use-passphrase" class="link-btn">Use passphrase instead</button>
+          </form>
+          <form id="unlock-passphrase-form" autocomplete="off" hidden>
             <label class="field">
               <span class="field-label">Data passphrase</span>
               <span class="input-wrap">
                 <svg class="icon field-icon"><use href="#i-key"/></svg>
-                <input id="unlock-passphrase" type="password" required autofocus placeholder="your passphrase" />
+                <input id="unlock-passphrase" type="password" required placeholder="your passphrase" />
               </span>
             </label>
-            <button type="submit" id="unlock-submit" class="btn btn-primary">
-              <span class="btn-label">Unlock</span>
+            <button type="submit" id="unlock-passphrase-submit" class="btn btn-primary">
+              <span class="btn-label">Unlock with passphrase</span>
               <svg class="icon"><use href="#i-arrow-right"/></svg>
             </button>
-            <p id="unlock-error" class="error" hidden></p>
+            <button type="button" id="unlock-use-pin" class="link-btn" hidden>Use 4-digit PIN instead</button>
           </form>
+          <p id="unlock-error" class="error" hidden></p>
           <p class="hint" id="unlock-meta"></p>
         </div>
       </section>
@@ -187,6 +221,14 @@
           <span id="selection-count">0 selected</span>
           <button id="selection-cancel" class="btn btn-ghost btn-sm" type="button">Cancel</button>
           <button id="selection-archive" class="btn btn-danger btn-sm" type="button" disabled><svg class="icon icon-sm"><use href="#i-archive"/></svg> Archive</button>
+        </div>
+
+        <div id="pin-banner" class="pin-banner" hidden>
+          <div class="pin-banner-copy">
+            <strong>Unlock faster</strong>
+            <span>Set a 4-digit PIN for this browser.</span>
+          </div>
+          <button id="pin-banner-open" class="btn btn-ghost btn-sm" type="button">Set PIN</button>
         </div>
 
         <footer id="footer" class="footer-bar">
@@ -252,6 +294,36 @@
           <p class="hint">Archived captures stay on this device and can be restored at any time.</p>
           <p id="archive-empty" class="hint" hidden>Nothing is archived yet.</p>
           <ul id="archive-results" class="archive-list"></ul>
+        </div>
+      </div>
+
+      <div id="security" class="detail" hidden>
+        <div class="detail-card security-card" role="dialog" aria-modal="true" aria-labelledby="security-title">
+          <button id="security-close" class="icon-btn detail-close" aria-label="Close security settings"><svg class="icon"><use href="#i-close"/></svg></button>
+          <p class="eyebrow"><svg class="icon icon-sm"><use href="#i-shield"/></svg> Security</p>
+          <h2 id="security-title">Lock screen</h2>
+          <p id="security-hint" class="hint"></p>
+          <form id="pin-form" autocomplete="off">
+            <label class="field">
+              <span class="field-label" id="pin-form-label">4-digit PIN</span>
+              <span class="input-wrap">
+                <svg class="icon field-icon"><use href="#i-lock"/></svg>
+                <input id="pin-new" type="password" required inputmode="numeric" pattern="[0-9]{4}" minlength="4" maxlength="4" autocomplete="new-password" placeholder="••••" />
+              </span>
+            </label>
+            <label class="field">
+              <span class="field-label">Confirm PIN</span>
+              <span class="input-wrap">
+                <svg class="icon field-icon"><use href="#i-lock"/></svg>
+                <input id="pin-confirm" type="password" required inputmode="numeric" pattern="[0-9]{4}" minlength="4" maxlength="4" autocomplete="new-password" placeholder="••••" />
+              </span>
+            </label>
+            <p id="pin-error" class="error" hidden></p>
+            <div class="security-actions">
+              <button type="submit" id="pin-save" class="btn btn-primary">Set PIN</button>
+              <button type="button" id="pin-remove" class="btn btn-danger btn-sm" hidden>Remove PIN</button>
+            </div>
+          </form>
         </div>
       </div>
     </div>

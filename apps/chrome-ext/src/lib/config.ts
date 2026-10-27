@@ -10,6 +10,11 @@ import {
 export interface StoredConfig extends ClientConfig {
   relaySecret: string | null;
   fingerprint: string | null;
+  pinSalt: string | null;
+  pinWrapIv: string | null;
+  pinWrapCt: string | null;
+  pinFailures: number;
+  pinLockedUntil: number;
 }
 
 export const EMPTY_CONFIG: StoredConfig = {
@@ -21,6 +26,11 @@ export const EMPTY_CONFIG: StoredConfig = {
   localOnly: true,
   relaySecret: null,
   fingerprint: null,
+  pinSalt: null,
+  pinWrapIv: null,
+  pinWrapCt: null,
+  pinFailures: 0,
+  pinLockedUntil: 0,
 };
 
 const CONFIG_KEY = "recall-config";

@@ -1,6 +1,6 @@
 # Recall — build and verification report
 
-Date: 2026-10-26 (initial report 2026-10-25; follow-up runtime notes below)
+Date: 2026-10-27 (initial report 2026-10-25; follow-up runtime notes below)
 Workspace: `D:\recalla`
 Node: `v24.22.0` · pnpm: `10.17.1` · JDK: `21.0.12` · Gradle: `8.14.6` · AGP: `8.13.2` · Kotlin: `2.3.21`
 Android: compile/target SDK `36`, minSdk `26`, build-tools `36.0.0`
@@ -19,9 +19,9 @@ environment are listed as **not verified**, not silently marked as passing.
 | Relay stores only ciphertext + `{id,user_id,created_at,size}`; no search/OCR/plaintext/push | PASS | `pnpm relay:smoke`: health, auth, register, PUT/GET/list/since, decrypt, per-user scoping, validation |
 | Relay remote deploy | PASS | `https://recall-relay.mzubairhassan18.workers.dev`; D1 `recall-meta`, R2 `recall-blobs`; health 200, unauth 401, remote register/PUT/GET/list/decrypt |
 | Local DB unreadable without passphrase | PASS (code/tests) | Chrome/desktop tests round-trip encrypted persistence; Android uses SQLCipher; no plaintext DB file on disk |
-| Chrome extension | PASS (build/tests/static + mocked popup) | 35 tests, typecheck, `dist/` built; tags/favorites/archive and popup interactions verified with a mocked Chrome API harness; manual unpacked-extension reload pending |
+| Chrome extension | PASS (build/tests/static + mocked popup) | 41 tests, typecheck, `dist/` built; PIN setup/unlock, lock-screen action hiding, tags/favorites/archive and popup interactions verified with a mocked Chrome API harness; manual unpacked-extension reload pending |
 | Desktop app | PASS (build/tests/smoke) | 36 tests, typecheck, `dist/` built, `--smoke` exit 0 |
-| Signed Android release APK | PASS (build/static + partial runtime) | `:app:assembleRelease`; v2 signature verifies; installed on SM-A715F; desktop↔Android sync verified; biometric enrollment runtime pending |
+| Signed Android release APK | PASS (build/static + device) | `:app:assembleRelease`; v2 signature verifies; installed on SM-A715F; desktop↔Android sync and light/dark theme user-verified; biometric enrollment runtime pending |
 | No server-side search/OCR/LLM/embeddings; no web/iOS | PASS | Relay routes only auth/blob/list/health; no model or index service exists |
 | No cloud calls before step 4 | PASS | Steps 1–3 used local Miniflare/D1/R2; the remote deploy ran only after explicit confirmation |
 | Never log secrets/plaintext | PASS | Scripts read secrets from env/prompt only; parity/backup print counts, not keys or payloads |
@@ -35,7 +35,7 @@ pnpm test
   @recall/shared-types   1 passed
   @recall/crypto-core   34 passed
   @recall/search-core   36 passed
-  @recall/chrome-ext    35 passed
+  @recall/chrome-ext    41 passed
   @recall/desktop       36 passed
   @recall/relay         relay-smoke: PASS
                         (health, auth, register, put x3, list, since, get, decrypt,
@@ -113,8 +113,8 @@ native-code: arm64-v8a, x86_64
 APK Signature Scheme v2: true (v1/v3/v3.1/v4: false)
 Signer CN=Recall, OU=Recall, O=Recall, L=Local, ST=Local, C=US
 Signer SHA-256: a4115e93877001a6eb7363c6fb0f543a2ad9c8a3422cdd7da48aa40d785e4faa
-Size: 47,070,345 bytes
-SHA-256: 47bccc88f573dc43d56afeaad64781803bf3ad3f81e1aa38f6fae3729c674a33
+Size: 51,672,901 bytes
+SHA-256: d6642ec9234dcc440e68be09dafe324fe110b3a7c11ee4c1231a5c51772523e0
 ```
 
 Artifacts:
@@ -264,3 +264,29 @@ it locally. The local `.env.local` is gitignored.
   fixes. A headless 430x760 render of `dist/popup.html` showed the header only, with no visible
   detail overlay; extension APIs are absent in a `file://` render, so the full popup still needs
   the manual `chrome://extensions` reload.
+
+## Follow-up verification (2026-10-27)
+
+- **Android light/dark theme:** PASS. The Compose UI now follows `isSystemInDarkTheme()` with
+  separate light/dark color schemes, theme-aware semantic colors, system-bar flags, XML palettes
+  (`values` / `values-night`), and a theme-aware widget background. `:app:compileDebugKotlin`,
+  `:app:testDebugUnitTest`, and `:app:assembleRelease` pass; the signed APK was installed over the
+  existing `com.recall.app` package with data preserved, and the user confirmed the app is working
+  fine on the SM-A715F.
+- **Android APK artifact:** `release/Recall-1.0.0.apk`, 51,672,901 bytes, SHA-256
+  `d6642ec9234dcc440e68be09dafe324fe110b3a7c11ee4c1231a5c51772523e0`; v2 signature verifies with
+  signer `CN=Recall`.
+- **Chrome PIN unlock:** PASS (unit/typecheck/build + mocked popup harness). A 4-digit PIN wraps
+  the existing 32-byte vault key with PBKDF2-SHA256 and AES-256-GCM; only the random salt, IV, and
+  ciphertext are stored, never the PIN. Five failures trigger an exponential lockout. The
+  passphrase remains available as the recovery/fallback path and still protects the sync identity.
+- **Chrome lock screen:** PASS in the mocked popup harness. Archive and security actions are hidden
+  while locked; a configured PIN is requested by default; passphrase fallback toggles in place.
+  Setup now asks for a PIN and confirmation, and existing installs without a PIN show a
+  “Set PIN” banner plus a security overlay after passphrase unlock. The overlay can set, change, or
+  remove the PIN.
+- **Chrome regression checks:** `pnpm --filter @recall/chrome-ext test` reports 41 passed;
+  `typecheck` is clean; `build` regenerates `dist/`. The release archive
+  `release/recall-chrome-1.0.0.zip` was rebuilt without source maps, 842,090 bytes, SHA-256
+  `9fcc5ff5af9ed024e2a2c6fc78834fd64df405605ae27af12cfc6244d3058981`. Manual reload of the
+  unpacked extension is still the remaining browser-level check.

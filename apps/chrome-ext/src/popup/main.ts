@@ -41,9 +41,34 @@ const selectionCount = $("selection-count");
 const selectionArchive = $<HTMLButtonElement>("selection-archive");
 const selectionCancel = $<HTMLButtonElement>("selection-cancel");
 const footer = $("footer");
+const securityOpen = $<HTMLButtonElement>("security-open");
 const archiveOpen = $<HTMLButtonElement>("archive-open");
 const archiveCount = $("archive-count");
 const syncInfo = $("sync-info");
+const pinBanner = $("pin-banner");
+const pinBannerOpen = $<HTMLButtonElement>("pin-banner-open");
+
+const securityEl = $("security");
+const securityHint = $("security-hint");
+const pinForm = $<HTMLFormElement>("pin-form");
+const pinFormLabel = $("pin-form-label");
+const pinNew = $<HTMLInputElement>("pin-new");
+const pinConfirm = $<HTMLInputElement>("pin-confirm");
+const pinError = $("pin-error");
+const pinSave = $<HTMLButtonElement>("pin-save");
+const pinRemove = $<HTMLButtonElement>("pin-remove");
+
+const unlockHint = $("unlock-hint");
+const unlockMeta = $("unlock-meta");
+const unlockError = $("unlock-error");
+const unlockPinForm = $<HTMLFormElement>("unlock-pin-form");
+const unlockPassphraseForm = $<HTMLFormElement>("unlock-passphrase-form");
+const unlockPin = $<HTMLInputElement>("unlock-pin");
+const unlockPassphrase = $<HTMLInputElement>("unlock-passphrase");
+const unlockPinSubmit = $<HTMLButtonElement>("unlock-pin-submit");
+const unlockPassphraseSubmit = $<HTMLButtonElement>("unlock-passphrase-submit");
+const unlockUsePassphrase = $<HTMLButtonElement>("unlock-use-passphrase");
+const unlockUsePin = $<HTMLButtonElement>("unlock-use-pin");
 
 const detailEl = $("detail");
 const detailTitle = $("detail-title");
@@ -99,6 +124,10 @@ const ERROR_TEXT: Record<string, string> = {
   "not-found": "That capture is no longer available.",
   "request-failed": "Something went wrong. Try again.",
   "sync-failed": "Sync failed. Check the relay settings.",
+  "invalid-pin": "Choose a 4-digit PIN.",
+  "pin-not-configured": "No PIN is set for this browser. Unlock with your passphrase.",
+  "wrong-pin": "That PIN is not correct. Try again.",
+  "pin-locked": "Too many attempts. Wait a moment, or use your passphrase.",
 };
 
 function messageFor(code: string): string {
@@ -131,6 +160,36 @@ function closeOverlays(): void {
   composerEl.hidden = true;
   detailEl.hidden = true;
   archiveEl.hidden = true;
+  securityEl.hidden = true;
+}
+
+function pinLockoutText(until: number | null): string | null {
+  if (!until || until <= Date.now()) return null;
+  const seconds = Math.max(1, Math.ceil((until - Date.now()) / 1000));
+  return `Too many attempts. Try again in ${seconds}s, or use your passphrase.`;
+}
+
+function setUnlockMode(mode: "pin" | "passphrase"): void {
+  const pinAvailable = status?.pinConfigured === true;
+  const usePin = pinAvailable && mode === "pin";
+  unlockPinForm.hidden = !usePin;
+  unlockPassphraseForm.hidden = usePin;
+  unlockUsePassphrase.hidden = !usePin;
+  unlockUsePin.hidden = !pinAvailable || usePin;
+  unlockHint.textContent = usePin
+    ? "Enter your 4-digit PIN to continue."
+    : "Your captures are encrypted on this device. Enter the passphrase to continue.";
+  const lockout = pinLockoutText(status?.pinLockedUntil ?? null);
+  unlockMeta.textContent = lockout
+    ? lockout
+    : usePin
+      ? "PIN unlock is local to this browser. Use your passphrase if you forget it."
+      : pinAvailable
+        ? "You can switch back to the PIN at any time."
+        : "";
+  unlockError.hidden = true;
+  if (usePin) unlockPin.focus();
+  else unlockPassphrase.focus();
 }
 
 function applyStatus(next: StatusData): void {
@@ -147,6 +206,10 @@ function applyStatus(next: StatusData): void {
   $("mode-label").textContent = next.localOnly ? "Offline only" : "Relay";
   modePill.classList.toggle("online", !next.localOnly);
 
+  const unlocked = next.configured && !next.locked;
+  archiveOpen.hidden = !unlocked;
+  securityOpen.hidden = !unlocked;
+  pinBanner.hidden = !unlocked || next.pinConfigured;
   archiveCount.hidden = next.archivedCount === 0;
   archiveCount.textContent = next.archivedCount > 99 ? "99+" : String(next.archivedCount);
 
@@ -160,7 +223,7 @@ function applyStatus(next: StatusData): void {
     closeOverlays();
     setSelectionMode(false);
     showPanel(unlockPanel);
-    $<HTMLInputElement>("unlock-passphrase").focus();
+    setUnlockMode(next.pinConfigured ? "pin" : "passphrase");
     return;
   }
 
@@ -446,14 +509,14 @@ function renderResult(row: CaptureSummary, query: string): HTMLLIElement {
 
   item.appendChild(body);
   item.addEventListener("click", () => {
-    if (selectionMode) toggleSelection(row.id);
+    if (selectionMode) toggleSelection(row.id, item);
     else void openResult(row);
   });
   item.addEventListener("keydown", (event) => {
     if (event.target !== item) return;
     if (event.key === "Enter" || event.key === " ") {
       event.preventDefault();
-      if (selectionMode) toggleSelection(row.id);
+      if (selectionMode) toggleSelection(row.id, item);
       else void openResult(row);
     }
   });
@@ -568,10 +631,15 @@ function setSelectionMode(enabled: boolean): void {
   else updateSelectionBar();
 }
 
-function toggleSelection(id: string): void {
+function toggleSelection(id: string, item?: HTMLLIElement): void {
   if (selectedIds.has(id)) selectedIds.delete(id);
   else selectedIds.add(id);
-  renderResults(currentRows, lastQuery);
+  if (item) {
+    item.classList.toggle("selected", selectionMode && selectedIds.has(id));
+    updateSelectionBar();
+  } else {
+    renderResults(currentRows, lastQuery);
+  }
 }
 
 function updateSelectionBar(): void {
@@ -663,12 +731,26 @@ $("setup-form").addEventListener("submit", async (event) => {
   errorEl.hidden = true;
 
   const passphrase = $<HTMLInputElement>("setup-passphrase").value;
+  const pin = $<HTMLInputElement>("setup-pin").value.trim();
+  const pinConfirm = $<HTMLInputElement>("setup-pin-confirm").value.trim();
+  if (!/^\d{4}$/.test(pin)) {
+    errorEl.textContent = messageFor("invalid-pin");
+    errorEl.hidden = false;
+    return;
+  }
+  if (pin !== pinConfirm) {
+    errorEl.textContent = "The two PINs do not match.";
+    errorEl.hidden = false;
+    return;
+  }
 
   submit.disabled = true;
   setButtonLabel(submit, "Deriving key…");
   try {
-    const next = await send<StatusData>({ type: "setup", passphrase });
+    const next = await send<StatusData>({ type: "setup", passphrase, pin });
     $<HTMLInputElement>("setup-passphrase").value = "";
+    $<HTMLInputElement>("setup-pin").value = "";
+    $<HTMLInputElement>("setup-pin-confirm").value = "";
     applyStatus(next);
   } catch (error) {
     errorEl.textContent = messageFor(error instanceof Error ? error.message : "request-failed");
@@ -679,27 +761,72 @@ $("setup-form").addEventListener("submit", async (event) => {
   }
 });
 
-$("unlock-form").addEventListener("submit", async (event) => {
-  event.preventDefault();
-  const errorEl = $("unlock-error");
-  const submit = $<HTMLButtonElement>("unlock-submit");
-  errorEl.hidden = true;
+async function handleUnlock(mode: "pin" | "passphrase"): Promise<void> {
+  const submit = mode === "pin" ? unlockPinSubmit : unlockPassphraseSubmit;
+  const label = mode === "pin" ? "Unlock" : "Unlock with passphrase";
+  unlockError.hidden = true;
 
-  const passphrase = $<HTMLInputElement>("unlock-passphrase").value;
+  const pin = unlockPin.value.trim();
+  const passphrase = unlockPassphrase.value;
+  if (mode === "pin" && !/^\d{4}$/.test(pin)) {
+    unlockError.textContent = messageFor("invalid-pin");
+    unlockError.hidden = false;
+    unlockPin.focus();
+    return;
+  }
+  if (mode === "passphrase" && passphrase.length === 0) {
+    unlockError.textContent = "Enter your passphrase.";
+    unlockError.hidden = false;
+    unlockPassphrase.focus();
+    return;
+  }
+
   submit.disabled = true;
   setButtonLabel(submit, "Deriving key…");
   try {
-    const next = await send<StatusData>({ type: "unlock", passphrase });
-    $<HTMLInputElement>("unlock-passphrase").value = "";
+    const next =
+      mode === "pin"
+        ? await send<StatusData>({ type: "unlock-pin", pin })
+        : await send<StatusData>({ type: "unlock", passphrase });
+    unlockPin.value = "";
+    unlockPassphrase.value = "";
     applyStatus(next);
   } catch (error) {
-    errorEl.textContent = messageFor(error instanceof Error ? error.message : "request-failed");
-    errorEl.hidden = false;
+    const code = error instanceof Error ? error.message : "request-failed";
+    if (mode === "pin" && code === "pin-locked") {
+      await refreshStatus().catch(() => undefined);
+    }
+    unlockError.textContent = messageFor(code);
+    unlockError.hidden = false;
+    if (mode === "pin") {
+      unlockPin.value = "";
+      unlockPin.focus();
+    } else {
+      unlockPassphrase.focus();
+    }
   } finally {
     submit.disabled = false;
-    setButtonLabel(submit, "Unlock");
+    setButtonLabel(submit, label);
   }
+}
+
+unlockPinForm.addEventListener("submit", (event) => {
+  event.preventDefault();
+  void handleUnlock("pin");
 });
+unlockPassphraseForm.addEventListener("submit", (event) => {
+  event.preventDefault();
+  void handleUnlock("passphrase");
+});
+unlockUsePassphrase.addEventListener("click", () => setUnlockMode("passphrase"));
+unlockUsePin.addEventListener("click", () => setUnlockMode("pin"));
+
+for (const input of document.querySelectorAll<HTMLInputElement>('input[inputmode="numeric"]')) {
+  input.addEventListener("input", () => {
+    const digits = input.value.replace(/\D/g, "").slice(0, 4);
+    if (input.value !== digits) input.value = digits;
+  });
+}
 
 /* ------------------------------------------------------------------ */
 /* main controls                                                       */
@@ -923,9 +1050,93 @@ archiveEl.addEventListener("click", (event) => {
   if (event.target === archiveEl) archiveEl.hidden = true;
 });
 
+/* ------------------------------------------------------------------ */
+/* security / PIN overlay                                              */
+/* ------------------------------------------------------------------ */
+
+function setPinError(message: string | null): void {
+  pinError.textContent = message ?? "";
+  pinError.hidden = message === null;
+}
+
+function openSecurity(): void {
+  if (!status || status.locked || !status.configured) return;
+  closeOverlays();
+  securityEl.hidden = false;
+  pinForm.reset();
+  setPinError(null);
+  const hasPin = status.pinConfigured;
+  securityHint.textContent = hasPin
+    ? "A 4-digit PIN is set for this browser. Enter a new PIN to replace it, or remove it and use the passphrase only."
+    : "Set a 4-digit PIN to unlock this browser quickly. Your passphrase still protects encrypted sync.";
+  pinFormLabel.textContent = hasPin ? "New 4-digit PIN" : "4-digit PIN";
+  pinSave.textContent = hasPin ? "Change PIN" : "Set PIN";
+  pinRemove.hidden = !hasPin;
+  pinNew.focus();
+}
+
+function closeSecurity(): void {
+  securityEl.hidden = true;
+}
+
+securityOpen.addEventListener("click", openSecurity);
+pinBannerOpen.addEventListener("click", openSecurity);
+$("security-close").addEventListener("click", closeSecurity);
+securityEl.addEventListener("click", (event) => {
+  if (event.target === securityEl) closeSecurity();
+});
+
+pinForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  setPinError(null);
+  const pin = pinNew.value.trim();
+  const confirm = pinConfirm.value.trim();
+  if (!/^\d{4}$/.test(pin)) {
+    setPinError(messageFor("invalid-pin"));
+    pinNew.focus();
+    return;
+  }
+  if (pin !== confirm) {
+    setPinError("The two PINs do not match.");
+    pinConfirm.focus();
+    return;
+  }
+
+  pinSave.disabled = true;
+  pinSave.textContent = "Saving…";
+  try {
+    await send<StatusData>({ type: "set-pin", pin });
+    closeSecurity();
+    await refreshStatus();
+  } catch (error) {
+    setPinError(messageFor(error instanceof Error ? error.message : "request-failed"));
+  } finally {
+    pinSave.disabled = false;
+    pinSave.textContent = status?.pinConfigured ? "Change PIN" : "Set PIN";
+  }
+});
+
+pinRemove.addEventListener("click", async () => {
+  if (!status?.pinConfigured) return;
+  if (!window.confirm("Remove the 4-digit PIN? You will need your passphrase to unlock.")) return;
+  pinRemove.disabled = true;
+  setPinError(null);
+  try {
+    await send<StatusData>({ type: "remove-pin" });
+    closeSecurity();
+    await refreshStatus();
+  } catch (error) {
+    setPinError(messageFor(error instanceof Error ? error.message : "request-failed"));
+  } finally {
+    pinRemove.disabled = false;
+  }
+});
+
 document.addEventListener("keydown", (event) => {
   if (event.key !== "Escape") return;
-  if (!composerEl.hidden) {
+  if (!securityEl.hidden) {
+    closeSecurity();
+  } else if (!composerEl.hidden) {
     closeComposer();
   } else if (!detailEl.hidden) {
     detailEl.hidden = true;

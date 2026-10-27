@@ -4,6 +4,8 @@ import type { CaptureSummary } from "./db.js";
 export interface StatusData {
   configured: boolean;
   locked: boolean;
+  pinConfigured: boolean;
+  pinLockedUntil: number | null;
   localOnly: boolean;
   relayUrl: string | null;
   count: number;
@@ -50,8 +52,11 @@ export interface NewCaptureResult {
 export type PopupRequest =
   | { type: "status" }
   | { type: "open" }
-  | { type: "setup"; passphrase: string }
+  | { type: "setup"; passphrase: string; pin: string }
   | { type: "unlock"; passphrase: string }
+  | { type: "unlock-pin"; pin: string }
+  | { type: "set-pin"; pin: string }
+  | { type: "remove-pin" }
   | { type: "lock" }
   | ({ type: "search"; query: string } & CaptureQuery)
   | ({ type: "timeline" } & CaptureQuery)
