@@ -66,6 +66,7 @@ import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
@@ -73,6 +74,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -199,7 +201,7 @@ private fun MainHeader(state: RecallUiState, viewModel: AppViewModel) {
     ) {
         RecallMark(size = 46.dp)
         Column(modifier = Modifier.weight(1f)) {
-            Text("Recall", style = MaterialTheme.typography.headlineMedium)
+            Text("Recall", style = MaterialTheme.typography.headlineMedium, color = RecallText)
             Text(
                 "${state.count} ${if (state.count == 1) "capture" else "captures"} · encrypted",
                 style = MaterialTheme.typography.bodySmall,
@@ -353,10 +355,10 @@ private fun FilterPill(
     Row(
         modifier = Modifier
             .clip(CircleShape)
-            .background(if (selected) RecallViolet.copy(alpha = 0.18f) else Color.White.copy(alpha = 0.045f))
+            .background(if (selected) RecallViolet.copy(alpha = 0.18f) else RecallFill)
             .border(
                 1.dp,
-                if (selected) RecallViolet.copy(alpha = 0.30f) else Color.White.copy(alpha = 0.10f),
+                if (selected) RecallViolet.copy(alpha = 0.30f) else RecallBorder,
                 CircleShape,
             )
             .clickable(onClick = onClick)
@@ -489,7 +491,7 @@ private fun DateHeader(label: String) {
             modifier = Modifier
                 .weight(1f)
                 .height(1.dp)
-                .background(Color.White.copy(alpha = 0.07f)),
+                .background(RecallBorder),
         )
     }
 }
@@ -602,7 +604,7 @@ private fun ResultCard(
             )
             .border(
                 1.dp,
-                if (selected) RecallViolet.copy(alpha = 0.55f) else Color.White.copy(alpha = 0.10f),
+                if (selected) RecallViolet.copy(alpha = 0.55f) else RecallBorder,
                 shape,
             )
             .combinedClickable(onClick = onClick, onLongClick = onLongClick)
@@ -619,6 +621,7 @@ private fun ResultCard(
             Text(
                 text = result.title,
                 style = MaterialTheme.typography.titleSmall,
+                color = RecallText,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.weight(1f),
@@ -690,10 +693,10 @@ private fun SelectionMark(selected: Boolean) {
             .padding(start = 6.dp)
             .size(22.dp)
             .clip(CircleShape)
-            .background(if (selected) RecallViolet else Color.White.copy(alpha = 0.08f))
+            .background(if (selected) RecallViolet else RecallBorder)
             .border(
                 1.dp,
-                if (selected) RecallViolet else Color.White.copy(alpha = 0.22f),
+                if (selected) RecallViolet else RecallBorderStrong,
                 CircleShape,
             ),
         contentAlignment = Alignment.Center,
@@ -726,7 +729,7 @@ private fun TagChip(
         Text(
             text = "#$text",
             style = MaterialTheme.typography.labelSmall,
-            color = Color(0xFFD8D2FF),
+            color = RecallTagText,
             maxLines = 1,
         )
         onRemove?.let {
@@ -829,8 +832,8 @@ private fun MainBottomBar(state: RecallUiState, viewModel: AppViewModel) {
                 modifier = Modifier
                     .size(42.dp)
                     .clip(RoundedCornerShape(14.dp))
-                    .background(Color.White.copy(alpha = 0.055f))
-                    .border(1.dp, Color.White.copy(alpha = 0.10f), RoundedCornerShape(14.dp)),
+                    .background(RecallFill)
+                    .border(1.dp, RecallBorder, RoundedCornerShape(14.dp)),
                 contentAlignment = Alignment.Center,
             ) {
                 CircularProgressIndicator(
@@ -866,13 +869,13 @@ private fun NewCaptureButton(onClick: () -> Unit) {
         Icon(
             imageVector = Icons.Outlined.Add,
             contentDescription = null,
-            tint = RecallInk950,
+            tint = RecallOnAccent,
             modifier = Modifier.size(17.dp),
         )
         Text(
             "New",
             style = MaterialTheme.typography.labelMedium,
-            color = RecallInk950,
+            color = RecallOnAccent,
         )
     }
 }
@@ -885,21 +888,22 @@ private fun QuickCaptureDialog(state: RecallUiState, viewModel: AppViewModel) {
     var favorite by rememberSaveable { mutableStateOf(false) }
 
     Dialog(onDismissRequest = viewModel::closeComposer) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .heightIn(max = 680.dp)
-                .clip(RoundedCornerShape(26.dp))
-                .background(Brush.verticalGradient(colors = listOf(RecallInk700, RecallInk900)))
-                .border(1.dp, Color.White.copy(alpha = 0.14f), RoundedCornerShape(26.dp))
-                .verticalScroll(rememberScrollState())
-                .padding(18.dp),
-        ) {
+        CompositionLocalProvider(LocalContentColor provides MaterialTheme.colorScheme.onSurface) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(max = 680.dp)
+                    .clip(RoundedCornerShape(26.dp))
+                    .background(Brush.verticalGradient(colors = listOf(RecallInk700, RecallInk900)))
+                    .border(1.dp, RecallBorderStrong, RoundedCornerShape(26.dp))
+                    .verticalScroll(rememberScrollState())
+                    .padding(18.dp),
+            ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 IconBadge(icon = Icons.Outlined.Add, tint = RecallCyan, size = 42.dp)
                 Spacer(Modifier.width(10.dp))
                 Column(modifier = Modifier.weight(1f)) {
-                    Text("New capture", style = MaterialTheme.typography.headlineSmall)
+                    Text("New capture", style = MaterialTheme.typography.headlineSmall, color = RecallText)
                     Text(
                         "Type it now. Encrypt it on save.",
                         style = MaterialTheme.typography.bodySmall,
@@ -982,11 +986,11 @@ private fun QuickCaptureDialog(state: RecallUiState, viewModel: AppViewModel) {
                     checked = favorite,
                     onCheckedChange = { favorite = it },
                     colors = SwitchDefaults.colors(
-                        checkedThumbColor = RecallInk950,
+                        checkedThumbColor = RecallOnAccent,
                         checkedTrackColor = RecallPink,
                         uncheckedThumbColor = RecallMuted,
-                        uncheckedTrackColor = Color.White.copy(alpha = 0.12f),
-                        uncheckedBorderColor = Color.White.copy(alpha = 0.16f),
+                        uncheckedTrackColor = RecallBorder,
+                        uncheckedBorderColor = RecallBorderStrong,
                     ),
                 )
             }
@@ -1007,6 +1011,7 @@ private fun QuickCaptureDialog(state: RecallUiState, viewModel: AppViewModel) {
             ) {
                 Text("Cancel", color = RecallMuted)
             }
+            }
         }
     }
 }
@@ -1025,7 +1030,7 @@ fun ArchivedScreen(state: RecallUiState, viewModel: AppViewModel) {
                 onClick = viewModel::closeArchived,
             )
             Column(modifier = Modifier.weight(1f)) {
-                Text("Archived", style = MaterialTheme.typography.headlineMedium)
+                Text("Archived", style = MaterialTheme.typography.headlineMedium, color = RecallText)
                 Text(
                     "${state.archivedCount} ${if (state.archivedCount == 1) "capture" else "captures"} · restore anytime",
                     style = MaterialTheme.typography.bodySmall,
@@ -1081,7 +1086,7 @@ private fun ArchivedCard(
             .fillMaxWidth()
             .clip(shape)
             .background(RecallInk800.copy(alpha = 0.72f))
-            .border(1.dp, Color.White.copy(alpha = 0.09f), shape)
+            .border(1.dp, RecallBorder, shape)
             .clickable(onClick = onClick)
             .padding(14.dp),
     ) {
@@ -1090,6 +1095,7 @@ private fun ArchivedCard(
                 Text(
                     result.title,
                     style = MaterialTheme.typography.titleSmall,
+                    color = RecallText,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
                 )
@@ -1157,20 +1163,21 @@ fun DetailDialog(
     val context = LocalContext.current
     var newTag by rememberSaveable(detail.id) { mutableStateOf("") }
     Dialog(onDismissRequest = onDismiss) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .heightIn(max = 680.dp)
-                .clip(RoundedCornerShape(26.dp))
-                .background(
-                    Brush.verticalGradient(
-                        colors = listOf(RecallInk700, RecallInk900),
-                    ),
-                )
-                .border(1.dp, Color.White.copy(alpha = 0.14f), RoundedCornerShape(26.dp))
-                .verticalScroll(rememberScrollState())
-                .padding(18.dp),
-        ) {
+        CompositionLocalProvider(LocalContentColor provides MaterialTheme.colorScheme.onSurface) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(max = 680.dp)
+                    .clip(RoundedCornerShape(26.dp))
+                    .background(
+                        Brush.verticalGradient(
+                            colors = listOf(RecallInk700, RecallInk900),
+                        ),
+                    )
+                    .border(1.dp, RecallBorderStrong, RoundedCornerShape(26.dp))
+                    .verticalScroll(rememberScrollState())
+                    .padding(18.dp),
+            ) {
             Row(verticalAlignment = Alignment.Top) {
                 IconBadge(icon = typeIcon(detail.type), tint = RecallCyan, size = 42.dp)
                 Spacer(Modifier.width(10.dp))
@@ -1180,6 +1187,7 @@ fun DetailDialog(
                     Text(
                         text = detail.title,
                         style = MaterialTheme.typography.headlineSmall,
+                        color = RecallText,
                         maxLines = 3,
                         overflow = TextOverflow.Ellipsis,
                     )
@@ -1324,6 +1332,7 @@ fun DetailDialog(
                 TextButton(onClick = onDismiss) {
                     Text("Close", color = RecallMuted, style = MaterialTheme.typography.labelMedium)
                 }
+            }
             }
         }
     }

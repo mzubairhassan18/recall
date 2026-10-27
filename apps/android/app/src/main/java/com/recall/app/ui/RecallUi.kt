@@ -48,7 +48,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
@@ -279,7 +278,7 @@ private fun SetupScreen(
             Text(
                 "Encrypted sync is on. The relay stores ciphertext and timestamps only.",
                 style = MaterialTheme.typography.bodySmall,
-                color = Color(0xFFB7F7D5),
+                color = RecallSuccessText,
             )
         }
         Spacer(Modifier.height(12.dp))
@@ -483,11 +482,11 @@ private fun FingerprintToggle(
             checked = checked,
             onCheckedChange = onCheckedChange,
             colors = SwitchDefaults.colors(
-                checkedThumbColor = RecallInk950,
+                checkedThumbColor = RecallOnAccent,
                 checkedTrackColor = RecallMint,
                 uncheckedThumbColor = RecallMuted,
-                uncheckedTrackColor = Color.White.copy(alpha = 0.12f),
-                uncheckedBorderColor = Color.White.copy(alpha = 0.16f),
+                uncheckedTrackColor = RecallBorder,
+                uncheckedBorderColor = RecallBorderStrong,
             ),
         )
     }
@@ -520,13 +519,13 @@ private fun FingerprintUnlockCard(
             modifier = Modifier
                 .size(52.dp)
                 .clip(CircleShape)
-                .background(Color.White.copy(alpha = 0.10f)),
+                .background(RecallBorder),
             contentAlignment = Alignment.Center,
         ) {
             Icon(
                 imageVector = Icons.Outlined.Fingerprint,
                 contentDescription = null,
-                tint = Color.White,
+                tint = RecallText,
                 modifier = Modifier.size(28.dp),
             )
         }
@@ -577,7 +576,7 @@ fun MessageCard(
             text = message,
             modifier = Modifier.weight(1f),
             style = MaterialTheme.typography.bodySmall,
-            color = if (isError) Color(0xFFFFC2CA) else RecallText,
+            color = if (isError) MaterialTheme.colorScheme.onErrorContainer else RecallText,
         )
         Icon(
             imageVector = Icons.Outlined.Close,

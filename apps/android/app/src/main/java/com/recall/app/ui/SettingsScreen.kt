@@ -95,6 +95,7 @@ fun SettingsScreen(
             Text(
                 "Settings",
                 style = MaterialTheme.typography.headlineMedium,
+                color = RecallText,
                 modifier = Modifier.weight(1f),
             )
             RecallMark(size = 42.dp)
@@ -172,11 +173,11 @@ fun SettingsScreen(
                             if (enabled) viewModel.enableBiometric() else viewModel.disableBiometric()
                         },
                         colors = SwitchDefaults.colors(
-                            checkedThumbColor = RecallInk950,
+                            checkedThumbColor = RecallOnAccent,
                             checkedTrackColor = RecallMint,
                             uncheckedThumbColor = RecallMuted,
-                            uncheckedTrackColor = Color.White.copy(alpha = 0.12f),
-                            uncheckedBorderColor = Color.White.copy(alpha = 0.16f),
+                            uncheckedTrackColor = RecallBorder,
+                            uncheckedBorderColor = RecallBorderStrong,
                         ),
                     )
                 }
@@ -472,10 +473,10 @@ private fun SettingsChip(
     Box(
         modifier = Modifier
             .clip(CircleShape)
-            .background(if (selected) RecallViolet.copy(alpha = 0.18f) else Color.White.copy(alpha = 0.045f))
+            .background(if (selected) RecallViolet.copy(alpha = 0.18f) else RecallFill)
             .border(
                 1.dp,
-                if (selected) RecallViolet.copy(alpha = 0.30f) else Color.White.copy(alpha = 0.10f),
+                if (selected) RecallViolet.copy(alpha = 0.30f) else RecallBorder,
                 CircleShape,
             )
             .clickable(onClick = onClick)
@@ -501,7 +502,7 @@ private fun SettingsActionButton(
     val background = if (primary) {
         Brush.horizontalGradient(listOf(RecallViolet, RecallCyan))
     } else {
-        Brush.horizontalGradient(listOf(Color.White.copy(alpha = 0.055f), Color.White.copy(alpha = 0.055f)))
+        Brush.horizontalGradient(listOf(RecallFill, RecallFill))
     }
     Row(
         modifier = Modifier
@@ -509,7 +510,7 @@ private fun SettingsActionButton(
             .background(background)
             .border(
                 1.dp,
-                if (primary) Color.Transparent else Color.White.copy(alpha = 0.10f),
+                if (primary) Color.Transparent else RecallBorder,
                 shape,
             )
             .clickable(enabled = enabled, onClick = onClick)
@@ -520,13 +521,13 @@ private fun SettingsActionButton(
         Icon(
             imageVector = icon,
             contentDescription = null,
-            tint = if (primary) RecallInk950 else RecallCyan,
+            tint = if (primary) RecallOnAccent else RecallCyan,
             modifier = Modifier.size(16.dp),
         )
         Text(
             text = text,
             style = MaterialTheme.typography.labelMedium,
-            color = if (primary) RecallInk950 else RecallText,
+            color = if (primary) RecallOnAccent else RecallText,
         )
     }
 }

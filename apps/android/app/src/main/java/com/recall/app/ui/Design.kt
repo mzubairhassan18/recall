@@ -69,12 +69,21 @@ private val ControlShape = RoundedCornerShape(16.dp)
 
 @Composable
 fun AuroraBackground(content: @Composable BoxScope.() -> Unit) {
+    val colors = MaterialTheme.colorScheme
+    val dark = LocalRecallDarkTheme.current
+    val background = colors.background
+    val surface = colors.surface
+    val gridLine = colors.onBackground.copy(alpha = if (dark) 0.028f else 0.05f)
+    val violetAlpha = if (dark) 0.30f else 0.10f
+    val cyanAlpha = if (dark) 0.17f else 0.08f
+    val mintAlpha = if (dark) 0.12f else 0.06f
+
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(
                 Brush.verticalGradient(
-                    colors = listOf(RecallInk950, RecallInk900, RecallInk950),
+                    colors = listOf(background, surface, background),
                 ),
             ),
     ) {
@@ -84,7 +93,7 @@ fun AuroraBackground(content: @Composable BoxScope.() -> Unit) {
             val mintCenter = Offset(size.width * 0.5f, size.height * 1.02f)
             drawCircle(
                 brush = Brush.radialGradient(
-                    colors = listOf(RecallViolet.copy(alpha = 0.30f), Color.Transparent),
+                    colors = listOf(colors.primary.copy(alpha = violetAlpha), Color.Transparent),
                     center = violetCenter,
                     radius = size.width * 0.82f,
                 ),
@@ -93,7 +102,7 @@ fun AuroraBackground(content: @Composable BoxScope.() -> Unit) {
             )
             drawCircle(
                 brush = Brush.radialGradient(
-                    colors = listOf(RecallCyan.copy(alpha = 0.17f), Color.Transparent),
+                    colors = listOf(colors.secondary.copy(alpha = cyanAlpha), Color.Transparent),
                     center = cyanCenter,
                     radius = size.width * 0.70f,
                 ),
@@ -102,7 +111,7 @@ fun AuroraBackground(content: @Composable BoxScope.() -> Unit) {
             )
             drawCircle(
                 brush = Brush.radialGradient(
-                    colors = listOf(RecallMint.copy(alpha = 0.12f), Color.Transparent),
+                    colors = listOf(colors.tertiary.copy(alpha = mintAlpha), Color.Transparent),
                     center = mintCenter,
                     radius = size.width * 0.90f,
                 ),
@@ -114,7 +123,7 @@ fun AuroraBackground(content: @Composable BoxScope.() -> Unit) {
             var x = 0f
             while (x <= size.width) {
                 drawLine(
-                    color = Color.White.copy(alpha = 0.028f),
+                    color = gridLine,
                     start = Offset(x, 0f),
                     end = Offset(x, size.height * 0.78f),
                     strokeWidth = 1f,
@@ -124,7 +133,7 @@ fun AuroraBackground(content: @Composable BoxScope.() -> Unit) {
             var y = 0f
             while (y <= size.height * 0.78f) {
                 drawLine(
-                    color = Color.White.copy(alpha = 0.028f),
+                    color = gridLine,
                     start = Offset(0f, y),
                     end = Offset(size.width, y),
                     strokeWidth = 1f,
@@ -278,7 +287,7 @@ fun GlassCard(
                     ),
                 ),
             )
-            .border(1.dp, Color.White.copy(alpha = 0.10f), GlassShape)
+            .border(1.dp, RecallBorder, GlassShape)
             .padding(padding),
         content = content,
     )
@@ -366,24 +375,24 @@ fun RecallTextField(
         keyboardOptions = KeyboardOptions(keyboardType = keyboardType),
         shape = ControlShape,
         colors = OutlinedTextFieldDefaults.colors(
-            focusedTextColor = RecallText,
-            unfocusedTextColor = RecallText,
-            disabledTextColor = RecallMuted,
-            focusedContainerColor = RecallInk950.copy(alpha = 0.42f),
-            unfocusedContainerColor = RecallInk950.copy(alpha = 0.32f),
-            disabledContainerColor = RecallInk900.copy(alpha = 0.30f),
-            focusedBorderColor = RecallCyan.copy(alpha = 0.60f),
-            unfocusedBorderColor = Color.White.copy(alpha = 0.12f),
-            disabledBorderColor = Color.White.copy(alpha = 0.06f),
-            cursorColor = RecallCyan,
-            focusedLabelColor = RecallCyan,
-            unfocusedLabelColor = RecallMuted,
-            focusedLeadingIconColor = RecallCyan,
-            unfocusedLeadingIconColor = RecallFaint,
-            focusedTrailingIconColor = RecallCyan,
-            unfocusedTrailingIconColor = RecallFaint,
-            focusedPlaceholderColor = RecallFaint,
-            unfocusedPlaceholderColor = RecallFaint,
+            focusedTextColor = MaterialTheme.colorScheme.onSurface,
+            unfocusedTextColor = MaterialTheme.colorScheme.onSurface,
+            disabledTextColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.70f),
+            focusedContainerColor = MaterialTheme.colorScheme.surface,
+            unfocusedContainerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.86f),
+            disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.55f),
+            focusedBorderColor = MaterialTheme.colorScheme.secondary.copy(alpha = 0.75f),
+            unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant,
+            disabledBorderColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.60f),
+            cursorColor = MaterialTheme.colorScheme.secondary,
+            focusedLabelColor = MaterialTheme.colorScheme.secondary,
+            unfocusedLabelColor = MaterialTheme.colorScheme.onSurfaceVariant,
+            focusedLeadingIconColor = MaterialTheme.colorScheme.secondary,
+            unfocusedLeadingIconColor = MaterialTheme.colorScheme.outline,
+            focusedTrailingIconColor = MaterialTheme.colorScheme.secondary,
+            unfocusedTrailingIconColor = MaterialTheme.colorScheme.outline,
+            focusedPlaceholderColor = MaterialTheme.colorScheme.outline,
+            unfocusedPlaceholderColor = MaterialTheme.colorScheme.outline,
         ),
     )
 }
@@ -420,19 +429,19 @@ fun RecallPrimaryButton(
             if (loading) {
                 CircularProgressIndicator(
                     modifier = Modifier.size(20.dp),
-                    color = RecallInk950,
+                    color = RecallOnAccent,
                     strokeWidth = 2.dp,
                 )
             } else {
                 Text(
                     text = text,
                     style = MaterialTheme.typography.labelLarge,
-                    color = RecallInk950,
+                    color = RecallOnAccent,
                 )
                 Icon(
                     imageVector = icon,
                     contentDescription = null,
-                    tint = RecallInk950,
+                    tint = RecallOnAccent,
                     modifier = Modifier.size(19.dp),
                 )
             }
@@ -447,23 +456,24 @@ fun RecallIconButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
-    tint: Color = RecallMuted,
+    tint: Color? = null,
     size: Dp = 42.dp,
 ) {
     val shape = RoundedCornerShape(14.dp)
+    val iconTint = tint ?: MaterialTheme.colorScheme.onSurfaceVariant
     Box(
         modifier = modifier
             .size(size)
             .clip(shape)
-            .background(Color.White.copy(alpha = 0.055f))
-            .border(1.dp, Color.White.copy(alpha = 0.10f), shape)
+            .background(RecallFill)
+            .border(1.dp, RecallBorder, shape)
             .clickable(enabled = enabled, onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
         Icon(
             imageVector = icon,
             contentDescription = contentDescription,
-            tint = tint,
+            tint = iconTint,
             modifier = Modifier.size(size * 0.48f),
         )
     }
@@ -478,10 +488,10 @@ fun StatusChip(
     Row(
         modifier = modifier
             .clip(CircleShape)
-            .background(Color.White.copy(alpha = 0.055f))
+            .background(RecallFill)
             .border(
                 1.dp,
-                if (online) RecallMint.copy(alpha = 0.26f) else Color.White.copy(alpha = 0.10f),
+                if (online) RecallMint.copy(alpha = 0.26f) else RecallBorder,
                 CircleShape,
             )
             .padding(horizontal = 10.dp, vertical = 6.dp),
@@ -496,7 +506,7 @@ fun StatusChip(
         Text(
             text = text,
             style = MaterialTheme.typography.labelSmall,
-            color = if (online) Color(0xFFB7F7D5) else RecallMuted,
+            color = if (online) RecallSuccessText else RecallMuted,
         )
     }
 }
@@ -546,7 +556,7 @@ fun SoftDivider(modifier: Modifier = Modifier) {
         modifier = modifier
             .fillMaxWidth()
             .height(1.dp)
-            .background(Color.White.copy(alpha = 0.08f)),
+            .background(RecallBorder),
     )
 }
 
@@ -565,21 +575,22 @@ fun LabelValueRow(label: String, value: String) {
 @Composable
 fun IconBadge(
     icon: ImageVector,
-    tint: Color = RecallCyan,
+    tint: Color? = null,
     modifier: Modifier = Modifier,
     size: Dp = 40.dp,
 ) {
+    val badgeTint = tint ?: MaterialTheme.colorScheme.secondary
     Box(
         modifier = modifier
             .size(size)
             .clip(RoundedCornerShape(size * 0.32f))
-            .background(tint.copy(alpha = 0.12f)),
+            .background(badgeTint.copy(alpha = 0.12f)),
         contentAlignment = Alignment.Center,
     ) {
         Icon(
             imageVector = icon,
             contentDescription = null,
-            tint = tint,
+            tint = badgeTint,
             modifier = Modifier.size(size * 0.5f),
         )
     }
