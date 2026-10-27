@@ -72,11 +72,11 @@ pnpm build
   apps/desktop/dist     built
 ```
 
-Desktop smoke (GPU disabled to avoid a headless GPU warning):
+Desktop smoke (GUI-subsystem binary reattaches stdout for the report):
 
 ```text
 cd apps/desktop
-electron.exe . --smoke --disable-gpu
+cargo run --manifest-path src-tauri/Cargo.toml -- --smoke
 [smoke] ok store=1 results=1 bridge=true renderer=true
 exit=0
 ```
@@ -136,8 +136,9 @@ report or any committed file. `apps/android/keystore.properties.example` shows t
    `@sqlite.org/sqlite-wasm` (3.54.1-build1). `sql.js`'s shipped build has no FTS5; native
    `better-sqlite3` would require per-ABI rebuilds. The store/schema/search behavior is otherwise
    the same as the spec.
-2. **Desktop persistence shape.** SQLite runs in WASM memory and is exported as
-   `recall.db.enc` (`iv || ciphertext || tag`) in Electron `userData`. There is no plaintext
+2. **Desktop persistence shape.** SQLite runs in WASM memory inside the WebView2 renderer and is
+   exported as `recall.db.enc` (`iv || ciphertext || tag`) in `%APPDATA%\Recall` — the same
+   directory the Electron build used, so existing stores open unchanged. There is no plaintext
    `.sqlite` file on disk; the FTS5 index is inside the encrypted container.
 3. **Android SQLCipher + manual FTS5.** Room only exposes FTS4 annotations, so the `captures_fts`
    FTS5 virtual table and its external-content triggers are created with
@@ -157,8 +158,9 @@ report or any committed file. `apps/android/keystore.properties.example` shows t
    `BIOMETRIC_STRONG` and is invalidated by new biometric enrollment. It is never written to
    plaintext preferences. The in-memory copy is needed to re-key SQLCipher after unlock.
 7. **Relay-secret storage fallbacks.** Android wraps the relay secret with the Keystore when
-   available; otherwise it stores base64 (documented, not encryption). Desktop uses Electron
-   `safeStorage` when available and a base64 fallback otherwise. The relay secret is never
+   available; otherwise it stores base64 (documented, not encryption). Desktop wraps it with
+   Windows DPAPI through the Tauri host, keeps a base64 fallback otherwise, and can still read
+   the Chromium `v10` envelopes written by the previous Electron build. The relay secret is never
    logged.
 8. **Sync identity uses PBKDF2, not a plain SHA-256.** `u_` +
    `hex(PBKDF2-HMAC-SHA256(passphrase, "recall-sync-v1", 600000, 16))`. This prevents the relay's

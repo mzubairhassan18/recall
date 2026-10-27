@@ -1,4 +1,3 @@
-import { contextBridge, ipcRenderer } from "electron";
 import type { SearchResult } from "@recall/shared-types";
 import type {
   CaptureDetail,
@@ -10,12 +9,13 @@ import type {
   SyncResult,
   TimelineInput,
 } from "./lib/messages.js";
+import { boot, dispatch, onChanged, onFocusSearch } from "./core/app.js";
 
-async function invoke<T>(channel: string, argument?: unknown): Promise<T> {
-  const result = (await ipcRenderer.invoke(channel, argument)) as IpcResult<T>;
-  if (!result || !result.ok) throw new Error(result?.error ?? "request-failed");
-  return result.data;
-}
+/**
+ * `window.recall` for the Tauri build. Same shape as the Electron preload bridge, so the
+ * renderer (`src/renderer/main.ts`) and every UI behaviour stay untouched: calls land on the
+ * in-page core, which uses the Rust host only for OS operations.
+ */
 
 export interface RecallBridge {
   status(): Promise<StatusData>;
@@ -33,6 +33,12 @@ export interface RecallBridge {
   onFocusSearch(callback: () => void): () => void;
 }
 
+async function invoke<T>(channel: string, argument?: unknown): Promise<T> {
+  const result = (await dispatch(channel, argument)) as IpcResult<T>;
+  if (!result || !result.ok) throw new Error(result?.error ?? "request-failed");
+  return result.data;
+}
+
 const bridge: RecallBridge = {
   status: () => invoke<StatusData>("recall:status"),
   setup: (input) => invoke<StatusData>("recall:setup", input),
@@ -45,16 +51,10 @@ const bridge: RecallBridge = {
   sync: () => invoke<SyncResult>("recall:sync"),
   openExternal: (url) => invoke<void>("recall:open-external", url),
   quit: () => invoke<void>("recall:quit"),
-  onChanged: (callback) => {
-    const listener = (): void => callback();
-    ipcRenderer.on("recall:changed", listener);
-    return () => ipcRenderer.removeListener("recall:changed", listener);
-  },
-  onFocusSearch: (callback) => {
-    const listener = (): void => callback();
-    ipcRenderer.on("recall:focus-search", listener);
-    return () => ipcRenderer.removeListener("recall:focus-search", listener);
-  },
+  onChanged,
+  onFocusSearch,
 };
 
-contextBridge.exposeInMainWorld("recall", bridge);
+(globalThis as unknown as { recall: RecallBridge }).recall = bridge;
+
+void boot().catch(() => undefined);

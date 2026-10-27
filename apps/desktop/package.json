@@ -3,13 +3,13 @@
   "version": "1.0.0",
   "private": true,
   "type": "module",
-  "main": "dist/main.js",
   "scripts": {
     "build": "node build.mjs",
-    "start": "node build.mjs && electron .",
+    "start": "node build.mjs && cargo run --manifest-path src-tauri/Cargo.toml",
     "dev": "node build.mjs --watch",
     "test": "vitest run",
-    "typecheck": "tsc -p tsconfig.json --noEmit"
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "tauri": "tauri"
   },
   "dependencies": {
     "@recall/crypto-core": "workspace:*",
@@ -18,8 +18,9 @@
     "@sqlite.org/sqlite-wasm": "3.54.1-build1"
   },
   "devDependencies": {
+    "@tauri-apps/api": "2.11.1",
+    "@tauri-apps/cli": "^2.12.4",
     "@types/node": "^24.10.1",
-    "electron": "^38.8.6",
     "esbuild": "^0.25.11",
     "typescript": "^5.9.3",
     "vitest": "^3.2.4"

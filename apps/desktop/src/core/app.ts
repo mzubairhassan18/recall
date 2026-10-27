@@ -1,33 +1,17 @@
-import {
-  app,
-  BrowserWindow,
-  clipboard,
-  globalShortcut,
-  ipcMain,
-  Menu,
-  nativeImage,
-  Notification,
-  safeStorage,
-  shell,
-  Tray,
-} from "electron";
-import { execFile } from "node:child_process";
-import { randomUUID } from "node:crypto";
-import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
-import { promisify } from "node:util";
+import { join } from "node:path";
 import type { CapturePayload, CaptureType, SearchResult, SyncReport } from "@recall/shared-types";
 import { base64ToBytes, bytesToBase64 } from "@recall/crypto-core";
 import type { SynonymIndex } from "@recall/search-core";
-import { CaptureStore } from "./lib/db.js";
-import { EncryptedPersistence } from "./lib/encrypted-persistence.js";
-import { FilePersistence } from "./lib/file-persistence.js";
-import { loadConfig, saveConfig, type SecretBox, type StoredConfig } from "./lib/config.js";
-import { createIdentity, unlockIdentity } from "./lib/identity.js";
-import { RelayClient } from "./lib/relay-client.js";
-import { RELAY_SECRET, RELAY_URL } from "./lib/relay-defaults.js";
-import { syncNow } from "./lib/sync.js";
-import { loadSynonyms } from "./lib/synonyms.js";
+import { CaptureStore, MemoryPersistence } from "../lib/db.js";
+import { EncryptedPersistence } from "../lib/encrypted-persistence.js";
+import { FilePersistence } from "../lib/file-persistence.js";
+import { loadConfig, saveConfig, type SecretBox, type StoredConfig } from "../lib/config.js";
+import { createIdentity, unlockIdentity } from "../lib/identity.js";
+import { RelayClient } from "../lib/relay-client.js";
+import { RELAY_SECRET, RELAY_URL } from "../lib/relay-defaults.js";
+import { syncNow } from "../lib/sync.js";
+import { loadSynonyms } from "../lib/synonyms.js";
+import * as platform from "../lib/platform.js";
 import type {
   CaptureDetail,
   CaptureResult,
@@ -37,48 +21,58 @@ import type {
   StatusData,
   SyncResult,
   TimelineInput,
-} from "./lib/messages.js";
+} from "../lib/messages.js";
 
-const here = dirname(fileURLToPath(import.meta.url));
-const userData = app.getPath("userData");
-const configFile = join(userData, "config.json");
-const databaseFile = join(userData, "recall.db.enc");
-const synonymsFile = join(here, "synonyms.json");
+/**
+ * Desktop app core. This is the previous Electron main process, unchanged in behaviour:
+ * the same crypto, SQLite store, sync loop, capture rules, and error codes. Only the shell
+ * calls moved to Rust (`../lib/platform.ts`); everything below is the original logic.
+ */
 
-const CAPTURE_SHORTCUT = "CommandOrControl+Shift+R";
-const SEARCH_SHORTCUT = "CommandOrControl+Shift+S";
 const SYNC_INTERVAL_MS = 30_000;
-const smoke = process.argv.includes("--smoke");
 
-let window: BrowserWindow | null = null;
-let tray: Tray | null = null;
-let quitting = false;
+const synonymsFile = "synonyms.json";
+
+let configFile = "";
+let databaseFile = "";
+let secretBox: SecretBox;
 let key: CryptoKey | null = null;
 let storePromise: Promise<CaptureStore> | null = null;
 let configCache: StoredConfig | null = null;
-let secretBox: SecretBox;
 let synonyms: SynonymIndex | null = null;
 let syncPromise: Promise<SyncReport> | null = null;
-let syncTimer: NodeJS.Timeout | null = null;
+let syncTimer: ReturnType<typeof setInterval> | null = null;
 let lastSyncAt: number | null = null;
 let lastSyncError: string | null = null;
+
+const changedListeners = new Set<() => void>();
+const focusSearchListeners = new Set<() => void>();
+
+/* ------------------------------------------------------------------ */
+/* events (was ipcRenderer.send from the main process)                 */
+/* ------------------------------------------------------------------ */
+
+export function onChanged(callback: () => void): () => void {
+  changedListeners.add(callback);
+  return () => changedListeners.delete(callback);
+}
+
+export function onFocusSearch(callback: () => void): () => void {
+  focusSearchListeners.add(callback);
+  return () => focusSearchListeners.delete(callback);
+}
+
+function emitChanged(): void {
+  for (const listener of changedListeners) listener();
+}
 
 /* ------------------------------------------------------------------ */
 /* state                                                               */
 /* ------------------------------------------------------------------ */
 
-function makeSecretBox(): SecretBox {
-  let available = false;
-  try {
-    available = safeStorage.isEncryptionAvailable();
-  } catch {
-    available = false;
-  }
-  return {
-    available,
-    encrypt: (plaintext) => safeStorage.encryptString(plaintext).toString("base64"),
-    decrypt: (token) => safeStorage.decryptString(Buffer.from(token, "base64")),
-  };
+function requireKey(): CryptoKey {
+  if (!key) throw new Error("locked");
+  return key;
 }
 
 async function getConfig(): Promise<StoredConfig> {
@@ -89,11 +83,6 @@ async function getConfig(): Promise<StoredConfig> {
 async function persistConfig(next: StoredConfig): Promise<void> {
   configCache = next;
   await saveConfig(configFile, next, secretBox);
-}
-
-function requireKey(): CryptoKey {
-  if (!key) throw new Error("locked");
-  return key;
 }
 
 async function getStore(): Promise<CaptureStore> {
@@ -115,18 +104,20 @@ function resetStore(): void {
 }
 
 function broadcastChanged(): void {
-  if (window && !window.isDestroyed()) window.webContents.send("recall:changed");
+  emitChanged();
   void getConfig()
     .then(async (config) => {
       if (!key) {
-        tray?.setToolTip("Recall — locked");
+        void platform.setTrayTooltip("Recall — locked");
         return;
       }
       try {
         const store = await getStore();
-        tray?.setToolTip(`Recall — ${store.count()} captures${config.localOnly ? "" : " · synced"}`);
+        void platform.setTrayTooltip(
+          `Recall — ${store.count()} captures${config.localOnly ? "" : " · synced"}`,
+        );
       } catch {
-        tray?.setToolTip("Recall");
+        void platform.setTrayTooltip("Recall");
       }
     })
     .catch(() => undefined);
@@ -198,7 +189,7 @@ function startSyncTimer(): void {
 async function saveCapture(payload: CapturePayload): Promise<string> {
   requireKey();
   const store = await getStore();
-  const id = randomUUID();
+  const id = crypto.randomUUID();
   await store.insertCapture({
     id,
     created_at: Date.now(),
@@ -215,21 +206,9 @@ async function saveCapture(payload: CapturePayload): Promise<string> {
   return id;
 }
 
-const execFileAsync = promisify(execFile);
-
 /** Read the Windows CF_HTML payload, which can carry the source page URL. */
-function readClipboardHtml(): string {
-  try {
-    const buffer = clipboard.readBuffer("HTML Format");
-    if (buffer.length > 0) return buffer.toString("utf8");
-  } catch {
-    // Some platforms expose only text/html through readHTML().
-  }
-  try {
-    return clipboard.readHTML();
-  } catch {
-    return "";
-  }
+async function readClipboardHtml(): Promise<string> {
+  return platform.clipboardHtml();
 }
 
 function sourceUrlFromHtml(html: string): string | null {
@@ -252,55 +231,18 @@ function hostOf(value: string): string | null {
   }
 }
 
-/**
- * Windows does not put an app name in the clipboard. Ask the OS for the clipboard owner's
- * process, so a capture from Notepad/Slack/Word can still say where it came from. This is
- * best-effort and deliberately short-lived; it never blocks a capture for long.
- */
-async function clipboardOwnerApp(): Promise<string | null> {
-  if (process.platform !== "win32") return null;
-  const script = `
-Add-Type @'
-using System;
-using System.Runtime.InteropServices;
-public class RecallClipboardOwner {
-  [DllImport("user32.dll")] public static extern IntPtr GetClipboardOwner();
-  [DllImport("user32.dll")] public static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint processId);
-}
-'@
-$h = [RecallClipboardOwner]::GetClipboardOwner()
-if ($h -eq [IntPtr]::Zero) { return }
-$procId = [uint32]0
-[RecallClipboardOwner]::GetWindowThreadProcessId($h, [ref]$procId) | Out-Null
-if ($procId -eq 0) { return }
-$p = Get-Process -Id $procId -ErrorAction SilentlyContinue
-if ($p) { $p.ProcessName }
-`;
-  try {
-    const { stdout } = await execFileAsync(
-      "powershell.exe",
-      ["-NoProfile", "-NonInteractive", "-WindowStyle", "Hidden", "-Command", script],
-      { timeout: 1500, windowsHide: true },
-    );
-    const name = stdout.trim().replace(/\.exe$/i, "");
-    return name.length > 0 ? name : null;
-  } catch {
-    return null;
-  }
-}
-
 async function captureClipboard(): Promise<CaptureResult> {
   if (!key) {
-    notify("Recall is locked", "Open Recall and unlock to capture.");
+    await platform.notify("Recall is locked", "Open Recall and unlock to capture.");
     return { saved: false, reason: "locked" };
   }
 
-  const text = clipboard.readText().trim();
+  const text = (await platform.clipboardText()).trim();
   if (text.length > 0) {
     const isUrl = /^https?:\/\/\S+$/i.test(text);
-    const sourceUrl = sourceUrlFromHtml(readClipboardHtml()) ?? (isUrl ? text : firstUrlIn(text));
+    const sourceUrl = sourceUrlFromHtml(await readClipboardHtml()) ?? (isUrl ? text : firstUrlIn(text));
     const sourceHost = sourceUrl ? hostOf(sourceUrl) : null;
-    const app = await clipboardOwnerApp();
+    const app = await platform.clipboardOwnerApp();
     const title = isUrl
       ? [app, sourceHost ?? hostOf(text)].filter(Boolean).join(" — ") || text
       : sourceUrl
@@ -317,34 +259,24 @@ async function captureClipboard(): Promise<CaptureResult> {
           ...(title ? { title } : {}),
         };
     const id = await saveCapture(payload);
-    notify("Saved to Recall", preview(payload));
+    await platform.notify("Saved to Recall", preview(payload));
     return { saved: true, kind: payload.type, id };
   }
 
-  const image = clipboard.readImage();
-  if (!image.isEmpty()) {
-    const size = image.getSize();
-    const scale = Math.min(1, 256 / Math.max(size.width, size.height));
-    const resized =
-      scale < 1
-        ? image.resize({
-            width: Math.max(1, Math.round(size.width * scale)),
-            height: Math.max(1, Math.round(size.height * scale)),
-            quality: "good",
-          })
-        : image;
-    const app = await clipboardOwnerApp();
+  const image = await platform.clipboardImage();
+  if (image) {
+    const app = await platform.clipboardOwnerApp();
     const payload: CapturePayload = {
       type: "screenshot",
       title: app ? `Image from ${app}` : "Clipboard image",
-      thumbnail_b64: resized.toPNG().toString("base64"),
+      thumbnail_b64: image.png_b64,
     };
     const id = await saveCapture(payload);
-    notify("Screenshot saved to Recall", "Stored locally as an encrypted thumbnail.");
+    await platform.notify("Screenshot saved to Recall", "Stored locally as an encrypted thumbnail.");
     return { saved: true, kind: "screenshot", id };
   }
 
-  notify("Nothing to capture", "The clipboard has no text or image.");
+  await platform.notify("Nothing to capture", "The clipboard has no text or image.");
   return { saved: false, reason: "empty-clipboard" };
 }
 
@@ -352,15 +284,6 @@ function preview(payload: CapturePayload): string {
   const value = payload.title || payload.text || payload.url || "";
   const flattened = value.replace(/\s+/g, " ").trim();
   return flattened.length > 120 ? `${flattened.slice(0, 117)}…` : flattened || "Captured.";
-}
-
-function notify(title: string, body: string): void {
-  if (!Notification.isSupported()) return;
-  try {
-    new Notification({ title, body }).show();
-  } catch {
-    // Notifications are best-effort (some Linux sessions have no daemon).
-  }
 }
 
 /* ------------------------------------------------------------------ */
@@ -487,112 +410,14 @@ async function detail(id: string): Promise<CaptureDetail> {
 }
 
 /* ------------------------------------------------------------------ */
-/* window + tray                                                       */
+/* IPC (unchanged channel names and result envelope)                   */
 /* ------------------------------------------------------------------ */
 
-function createWindow(): void {
-  window = new BrowserWindow({
-    width: 1100,
-    height: 760,
-    minWidth: 720,
-    minHeight: 560,
-    show: false,
-    backgroundColor: "#070a12",
-    title: "Recall",
-    icon: join(here, "assets", "icon.png"),
-    autoHideMenuBar: true,
-    webPreferences: {
-      preload: join(here, "preload.cjs"),
-      contextIsolation: true,
-      nodeIntegration: false,
-      sandbox: true,
-    },
-  });
-
-  void window.loadFile(join(here, "renderer", "index.html"));
-  window.once("ready-to-show", () => window?.show());
-  window.on("close", (event) => {
-    if (quitting) return;
-    event.preventDefault();
-    window?.hide();
-  });
-  window.on("closed", () => {
-    window = null;
-  });
-}
-
-function showWindow(focusSearch = false): void {
-  if (!window || window.isDestroyed()) {
-    createWindow();
-    return;
-  }
-  if (window.isMinimized()) window.restore();
-  window.show();
-  window.focus();
-  if (focusSearch) window.webContents.send("recall:focus-search");
-}
-
-function createTray(): void {
-  const image = nativeImage.createFromPath(join(here, "assets", "tray.png"));
-  tray = new Tray(image.isEmpty() ? nativeImage.createEmpty() : image);
-  tray.setToolTip("Recall");
-  tray.setContextMenu(
-    Menu.buildFromTemplate([
-      { label: "Open Recall", click: () => showWindow() },
-      {
-        label: "Capture clipboard",
-        accelerator: CAPTURE_SHORTCUT,
-        click: () => void captureClipboard().catch(() => undefined),
-      },
-      {
-        label: "Sync now",
-        click: () => {
-          void runSync()
-            .then(() => broadcastChanged())
-            .catch(() => undefined);
-        },
-      },
-      { type: "separator" },
-      {
-        label: "Lock",
-        click: () => {
-          void lock().catch(() => undefined);
-        },
-      },
-      { type: "separator" },
-      {
-        label: "Quit Recall",
-        click: () => {
-          quitting = true;
-          app.quit();
-        },
-      },
-    ]),
-  );
-  tray.on("click", () => showWindow());
-}
-
-function registerShortcuts(): void {
-  if (!globalShortcut.register(CAPTURE_SHORTCUT, () => void captureClipboard().catch(() => undefined))) {
-    console.warn(`[recall] could not register ${CAPTURE_SHORTCUT}; another app may own it`);
-  }
-  if (!globalShortcut.register(SEARCH_SHORTCUT, () => showWindow(true))) {
-    console.warn(`[recall] could not register ${SEARCH_SHORTCUT}; another app may own it`);
-  }
-}
-
-/* ------------------------------------------------------------------ */
-/* IPC                                                                 */
-/* ------------------------------------------------------------------ */
+type Handler = (argument: unknown) => Promise<unknown>;
+const handlers = new Map<string, Handler>();
 
 function handle<T, A = unknown>(channel: string, fn: (argument: A) => Promise<T>): void {
-  ipcMain.handle(channel, async (_event, argument: unknown) => {
-    try {
-      return { ok: true, data: await fn(argument as A) } satisfies IpcResult<T>;
-    } catch (error) {
-      return { ok: false, error: safeError(error) } satisfies IpcResult<T>;
-    }
-  });
+  handlers.set(channel, async (argument: unknown) => fn(argument as A));
 }
 
 function registerIpc(): void {
@@ -616,12 +441,22 @@ function registerIpc(): void {
       throw new Error("invalid-url");
     }
     if (parsed.protocol !== "http:" && parsed.protocol !== "https:") throw new Error("invalid-url");
-    await shell.openExternal(parsed.toString());
+    await platform.openExternal(parsed.toString());
   });
   handle("recall:quit", async () => {
-    quitting = true;
-    app.quit();
+    await platform.quit();
   });
+}
+
+export async function dispatch(channel: string, argument?: unknown): Promise<IpcResult<unknown>> {
+  try {
+    await boot();
+    const handler = handlers.get(channel);
+    if (!handler) throw new Error("request-failed");
+    return { ok: true, data: await handler(argument) };
+  } catch (error) {
+    return { ok: false, error: safeError(error) };
+  }
 }
 
 function safeError(error: unknown): string {
@@ -635,7 +470,6 @@ function safeError(error: unknown): string {
 
 async function runSmoke(): Promise<void> {
   try {
-    const { MemoryPersistence } = await import("./lib/db.js");
     const store = await CaptureStore.open(new MemoryPersistence());
     await store.insertCapture({
       id: "smoke",
@@ -650,23 +484,20 @@ async function runSmoke(): Promise<void> {
     if (count !== 1) throw new Error("store-count-failed");
     if (hits.length === 0) throw new Error("store-search-failed");
 
-    if (!window) throw new Error("window-missing");
-    if (window.webContents.isLoading()) {
-      await new Promise<void>((resolve) => window!.webContents.once("did-finish-load", () => resolve()));
-    }
-    const bridge = await window.webContents.executeJavaScript("typeof window.recall === 'object'");
-    if (bridge !== true) throw new Error("preload-bridge-missing");
-    const rendererReady = await window.webContents.executeJavaScript(
-      "document.documentElement.dataset.ready === '1'",
-    );
+    // The synonym dictionary ships as a frontend asset; this proves the bundle path works.
+    const dictionary = await getSynonyms();
+    if (dictionary.size === 0) throw new Error("synonyms-missing");
+
+    const bridge = typeof (globalThis as { recall?: unknown }).recall === "object";
+    if (bridge !== true) throw new Error("bridge-missing");
+    const rendererReady = document.documentElement.dataset.ready === "1";
     if (rendererReady !== true) throw new Error("renderer-script-missing");
-    console.log(`[smoke] ok store=${count} results=${hits.length} bridge=${String(bridge)} renderer=${String(rendererReady)}`);
-    quitting = true;
-    app.exit(0);
+    await platform.smokeReport(
+      true,
+      `ok store=${count} results=${hits.length} bridge=${String(bridge)} renderer=${String(rendererReady)}`,
+    );
   } catch (error) {
-    console.error("[smoke] failed", error);
-    quitting = true;
-    app.exit(1);
+    await platform.smokeReport(false, `failed ${error instanceof Error ? error.message : "unknown"}`);
   }
 }
 
@@ -674,44 +505,44 @@ async function runSmoke(): Promise<void> {
 /* lifecycle                                                           */
 /* ------------------------------------------------------------------ */
 
-if (!app.requestSingleInstanceLock()) {
-  app.quit();
-} else {
-  app.on("second-instance", () => showWindow());
+let booted: Promise<void> | null = null;
 
-  app.whenReady().then(
-    async () => {
-      app.setAppUserModelId("com.recall.desktop");
-      secretBox = makeSecretBox();
-      configCache = await loadConfig(configFile, secretBox);
-      registerIpc();
-      createWindow();
-      if (smoke) {
-        await runSmoke();
-        return;
-      }
-      createTray();
-      registerShortcuts();
-      startSyncTimer();
-    },
-    (error: unknown) => {
-      console.error("[recall] failed to start", error);
-      app.quit();
-    },
-  );
-
-  app.on("activate", () => showWindow());
-
-  // Tray app: closing the window hides it; the process stays alive until Quit.
-  app.on("window-all-closed", () => undefined);
-
-  app.on("before-quit", () => {
-    quitting = true;
-    globalShortcut.unregisterAll();
-    if (syncTimer) {
-      clearInterval(syncTimer);
-      syncTimer = null;
-    }
-    resetStore();
+export function boot(): Promise<void> {
+  booted ??= bootstrap().catch((error: unknown) => {
+    booted = null;
+    throw error;
   });
+  return booted;
+}
+
+async function bootstrap(): Promise<void> {
+  const paths = await platform.appPaths();
+  configFile = join(paths.userData, "config.json");
+  databaseFile = join(paths.userData, "recall.db.enc");
+  secretBox = await platform.secretBox();
+  configCache = await loadConfig(configFile, secretBox);
+  registerIpc();
+
+  await platform.onCapture(() => {
+    void captureClipboard().catch(() => undefined);
+  });
+  await platform.onTraySync(() => {
+    void runSync()
+      .then(() => broadcastChanged())
+      .catch(() => undefined);
+  });
+  await platform.onTrayLock(() => {
+    void lock().catch(() => undefined);
+  });
+  await platform.onFocusSearch(() => {
+    for (const listener of focusSearchListeners) listener();
+  });
+
+  if (paths.smoke) {
+    await runSmoke();
+    return;
+  }
+
+  startSyncTimer();
+  await platform.frontendReady();
 }

@@ -18,7 +18,7 @@ cloud provider the keys.
 | --- | --- | --- |
 | Android | [`Recall-1.0.0.apk`](https://github.com/mzubairhassan18/recall/releases/latest/download/Recall-1.0.0.apk) | Signed release, Android 8.0+, `arm64-v8a` + `x86_64` |
 | Chrome / Edge | [`recall-chrome-1.0.0.zip`](https://github.com/mzubairhassan18/recall/releases/latest/download/recall-chrome-1.0.0.zip) | Load unpacked in Developer mode |
-| Windows | [`Recall-1.0.0-win-x64.zip`](https://github.com/mzubairhassan18/recall/releases/latest/download/Recall-1.0.0-win-x64.zip) | Portable x64 build; unzip and run `Recall.exe` |
+| Windows | [`Recall_1.0.0_x64_en-US.msi`](https://github.com/mzubairhassan18/recall/releases/latest/download/Recall_1.0.0_x64_en-US.msi) | Tauri installer, Windows 10/11 x64, ~3 MB |
 | Checksums | [`SHA256SUMS.txt`](https://github.com/mzubairhassan18/recall/releases/latest/download/SHA256SUMS.txt) | Verify every download |
 
 ### Android
@@ -43,13 +43,14 @@ local database and syncs ciphertext through the relay.
 
 ### Windows
 
-1. Unzip `Recall-1.0.0-win-x64.zip`.
-2. Run `Recall.exe`. The build is portable; there is no installer.
-3. Enter your data passphrase. Use `Ctrl+Shift+R` to capture the clipboard and `Ctrl+Shift+S` to
-   focus search.
+1. Download `Recall_1.0.0_x64_en-US.msi` and run it. It installs per-machine to
+   `C:\Program Files\Recall` and adds a Start menu entry.
+2. Enter your data passphrase. Use `Ctrl+Shift+R` to capture the clipboard and `Ctrl+Shift+S` to
+   focus search. Closing the window keeps Recall in the tray.
 
-The portable binary is not code-signed, so Windows may show a SmartScreen warning. The SHA-256
-checksums are in `SHA256SUMS.txt`.
+The installer is not code-signed, so Windows may show a SmartScreen ("Unknown publisher") warning —
+choose **More info → Run anyway**. The SHA-256 checksums are in `SHA256SUMS.txt`. The app uses the
+system WebView2 runtime, which ships with Windows 11 and current Windows 10.
 
 ---
 
@@ -103,7 +104,7 @@ surfaces shiver. Static icons use the same R with a fixed wave frame. The canoni
 | --- | --- |
 | `apps/android` | Kotlin/Compose app, SQLCipher + FTS5, ML Kit OCR, biometric unlock |
 | `apps/chrome-ext` | MV3 extension, context menus, SQLite-WASM + FTS5, encrypted IndexedDB |
-| `apps/desktop` | Electron tray app, global shortcuts, same encrypted SQLite-WASM store |
+| `apps/desktop` | Tauri tray app (Rust host, system WebView2), global shortcuts, same encrypted SQLite-WASM store |
 | `apps/relay` | Cloudflare Worker + D1 + R2, dumb ciphertext relay |
 | `packages/crypto-core` | PBKDF2, AES-256-GCM envelopes, sync identity |
 | `packages/search-core` | The fixed 7-step search pipeline |
@@ -140,11 +141,24 @@ payload.
 
 ### Desktop
 
+Requirements: Rust 1.77+ with the MSVC toolchain (Visual Studio Build Tools, "Desktop development
+with C++"), and the WebView2 runtime (preinstalled on Windows 11 and up-to-date Windows 10). The
+Tauri CLI (`@tauri-apps/cli`) and WiX are only needed to produce the MSI.
+
 ```bash
-pnpm --filter @recall/desktop start
-# or
-pnpm --filter @recall/desktop build
+pnpm --filter @recall/desktop build      # esbuild -> apps/desktop/dist/renderer
+pnpm --filter @recall/desktop start      # build the frontend, then `cargo run` the Tauri shell
+pnpm --filter @recall/desktop dev        # esbuild --watch (run `cargo run` in a second terminal)
+
+# Installer (the Tauri CLI is a devDependency; WiX 3 downloads once on first run):
+pnpm --filter @recall/desktop tauri build --bundles msi
+# -> apps/desktop/src-tauri/target/release/bundle/msi/Recall_1.0.0_x64_en-US.msi
 ```
+
+The domain code (`crypto-core`, `search-core`, `src/lib/*`) runs unchanged inside WebView2, so the
+wire format and the encrypted store are byte-identical to the Chrome extension and Android.
+`src-tauri/` only provides the OS surface: tray, global hotkeys, clipboard, DPAPI secrets,
+notifications, and the single-instance lock.
 
 ### Android
 

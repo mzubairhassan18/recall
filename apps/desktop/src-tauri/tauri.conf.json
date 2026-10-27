@@ -1,0 +1,45 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "Recall",
+  "version": "1.0.0",
+  "identifier": "com.recall.desktop",
+  "build": {
+    "beforeDevCommand": "node build.mjs --watch",
+    "beforeBuildCommand": "node build.mjs",
+    "frontendDist": "../dist/renderer"
+  },
+  "app": {
+    "windows": [
+      {
+        "label": "main",
+        "title": "Recall",
+        "width": 1100,
+        "height": 760,
+        "minWidth": 720,
+        "minHeight": 560,
+        "center": true,
+        "visible": false,
+        "backgroundColor": "#070a12",
+        "additionalBrowserArgs": "--disable-features=msWebOOUI,msPdfOOUI,msSmartScreenProtection --disable-background-timer-throttling --disable-backgrounding-occluded-windows --disable-renderer-backgrounding"
+      }
+    ],
+    "security": {
+      "csp": null
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": ["msi"],
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.ico"
+    ],
+    "windows": {
+      "wix": {
+        "language": "en-US"
+      }
+    }
+  }
+}

@@ -1,10 +1,11 @@
 import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import { dirname } from "node:path";
+import { base64ToBytes, bytesToBase64, utf8Decode, utf8Encode } from "@recall/crypto-core";
 import type { ClientConfig } from "@recall/shared-types";
 
 /**
  * Desktop settings. The relay secret is the only secret persisted by the app; it is wrapped by
- * Electron safeStorage (DPAPI on Windows, Keychain on macOS, libsecret on Linux) when available.
+ * the OS keystore (DPAPI on Windows) through the Tauri host when available.
  * The passphrase, derived key, and decrypted captures are never written here.
  */
 export interface StoredConfig extends ClientConfig {
@@ -25,8 +26,8 @@ export const EMPTY_CONFIG: StoredConfig = {
 
 export interface SecretBox {
   available: boolean;
-  encrypt(plaintext: string): string;
-  decrypt(token: string): string;
+  encrypt(plaintext: string): Promise<string>;
+  decrypt(token: string): Promise<string>;
 }
 
 type StoredSecret = { encoding: "safeStorage" | "base64"; value: string } | null;
@@ -63,8 +64,8 @@ export async function loadConfig(file: string, box: SecretBox): Promise<StoredCo
     try {
       relaySecret =
         parsed.secret.encoding === "safeStorage"
-          ? box.decrypt(parsed.secret.value)
-          : Buffer.from(parsed.secret.value, "base64").toString("utf8");
+          ? await box.decrypt(parsed.secret.value)
+          : utf8Decode(base64ToBytes(parsed.secret.value));
     } catch {
       relaySecret = null;
     }
@@ -85,8 +86,8 @@ export async function loadConfig(file: string, box: SecretBox): Promise<StoredCo
 export async function saveConfig(file: string, config: StoredConfig, box: SecretBox): Promise<void> {
   const secret: StoredSecret = config.relaySecret
     ? box.available
-      ? { encoding: "safeStorage", value: box.encrypt(config.relaySecret) }
-      : { encoding: "base64", value: Buffer.from(config.relaySecret, "utf8").toString("base64") }
+      ? { encoding: "safeStorage", value: await box.encrypt(config.relaySecret) }
+      : { encoding: "base64", value: bytesToBase64(utf8Encode(config.relaySecret)) }
     : null;
 
   const body: ConfigFile = {

@@ -22,8 +22,8 @@ afterEach(async () => {
 
 const fakeBox: SecretBox = {
   available: true,
-  encrypt: (plaintext) => `enc:${Buffer.from(plaintext, "utf8").toString("base64")}`,
-  decrypt: (token) => Buffer.from(token.replace(/^enc:/, ""), "base64").toString("utf8"),
+  encrypt: async (plaintext) => `enc:${Buffer.from(plaintext, "utf8").toString("base64")}`,
+  decrypt: async (token) => Buffer.from(token.replace(/^enc:/, ""), "base64").toString("utf8"),
 };
 
 describe("desktop settings", () => {
@@ -64,10 +64,10 @@ describe("desktop settings", () => {
     const file = join(directory, "config.json");
     const box: SecretBox = {
       available: false,
-      encrypt: () => {
+      encrypt: async () => {
         throw new Error("not available");
       },
-      decrypt: () => {
+      decrypt: async () => {
         throw new Error("not available");
       },
     };

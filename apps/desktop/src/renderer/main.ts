@@ -1,6 +1,7 @@
 import type { CaptureType, SearchResult } from "@recall/shared-types";
 import type { CaptureDetail, StatusData } from "../lib/messages.js";
-import type { RecallBridge } from "../preload.js";
+import "../bridge.js";
+import type { RecallBridge } from "../bridge.js";
 
 declare global {
   interface Window {
