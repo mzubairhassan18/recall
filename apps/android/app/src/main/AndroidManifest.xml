@@ -38,6 +38,11 @@
         </activity>
 
         <activity
+            android:name=".CaptureEditorActivity"
+            android:exported="false"
+            android:windowSoftInputMode="adjustResize" />
+
+        <activity
             android:name=".capture.ShareReceiverActivity"
             android:excludeFromRecents="true"
             android:exported="true"

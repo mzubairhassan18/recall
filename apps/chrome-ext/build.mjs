@@ -10,7 +10,11 @@ const watch = process.argv.includes("--watch");
 mkdirSync(outdir, { recursive: true });
 
 const options = {
-  entryPoints: [resolve(here, "src/background.ts"), resolve(here, "src/popup/main.ts")],
+  entryPoints: [
+    resolve(here, "src/background.ts"),
+    resolve(here, "src/popup/main.ts"),
+    resolve(here, "src/editor/main.ts"),
+  ],
   bundle: true,
   outdir,
   format: "esm",
@@ -24,6 +28,8 @@ function copyStatic() {
   copyFileSync(resolve(here, "manifest.json"), resolve(outdir, "manifest.json"));
   copyFileSync(resolve(here, "public/popup.html"), resolve(outdir, "popup.html"));
   copyFileSync(resolve(here, "public/popup.css"), resolve(outdir, "popup.css"));
+  copyFileSync(resolve(here, "public/editor.html"), resolve(outdir, "editor.html"));
+  copyFileSync(resolve(here, "public/editor.css"), resolve(outdir, "editor.css"));
   cpSync(resolve(here, "public/fonts"), resolve(outdir, "fonts"), { recursive: true });
   cpSync(resolve(here, "public/icons"), resolve(outdir, "icons"), { recursive: true });
   copyFileSync(resolve(here, "../../docs/test-vectors/synonyms.json"), resolve(outdir, "synonyms.json"));

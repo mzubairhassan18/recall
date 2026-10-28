@@ -30,6 +30,7 @@ data class CaptureDetail(
     val createdAt: Long,
     val type: CaptureType,
     val title: String,
+    val rawTitle: String? = null,
     val url: String?,
     val text: String?,
     val ocrText: String?,
@@ -96,6 +97,7 @@ class CaptureRepository(
             createdAt = entity.createdAt,
             type = CaptureType.fromWire(entity.type) ?: CaptureType.TEXT,
             title = Snippets.displayTitle(entity.toHit()),
+            rawTitle = entity.title,
             url = entity.url,
             text = entity.text,
             ocrText = entity.ocrText,
@@ -159,6 +161,33 @@ class CaptureRepository(
 
     suspend fun setArchived(id: String, archived: Boolean) = withContext(Dispatchers.IO) {
         dao.setArchived(id, if (archived) 1 else 0)
+    }
+
+    /**
+     * Saves edits to the decrypted fields and queues the capture for another encrypted upload.
+     * Tags are replaced atomically with the content fields.
+     */
+    suspend fun update(
+        id: String,
+        title: String?,
+        text: String?,
+        url: String?,
+        ocrText: String?,
+        tags: List<String>,
+    ): CaptureDetail? = withContext(Dispatchers.IO) {
+        val updated = dao.updateContent(
+            id = id,
+            title = title?.trim()?.takeIf { it.isNotEmpty() },
+            text = text?.trimEnd()?.takeIf { it.isNotEmpty() },
+            url = url?.trim()?.takeIf { it.isNotEmpty() },
+            ocrText = ocrText?.trimEnd()?.takeIf { it.isNotEmpty() },
+        )
+        if (updated == 0) return@withContext null
+        dao.deleteTags(id)
+        for (tag in normalizeTags(tags)) {
+            insertTag(id, tag)
+        }
+        detail(id)
     }
 
     suspend fun archiveMany(ids: Collection<String>): Int = withContext(Dispatchers.IO) {

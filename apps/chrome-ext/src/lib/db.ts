@@ -76,6 +76,14 @@ export interface TimelineFilter {
   limit?: number;
 }
 
+export interface CaptureEdit {
+  title: string | null;
+  text: string | null;
+  ocr_text: string | null;
+  url: string | null;
+  tags: string[];
+}
+
 type BindValue = string | number | null | Uint8Array;
 
 const SCHEMA = `
@@ -375,6 +383,28 @@ export class CaptureStore {
     );
     if (rows.length > 0) await this.persist();
     return this.tagsFor(id);
+  }
+
+  /** Replace editable content + tags and queue the row for another encrypted upload. */
+  async updateCapture(id: string, edit: CaptureEdit): Promise<boolean> {
+    const rows = this.rows<{ id: string }>(
+      `UPDATE captures
+       SET title = ?, text = ?, ocr_text = ?, url = ?, synced = 0
+       WHERE id = ?
+       RETURNING id`,
+      [edit.title, edit.text, edit.ocr_text, edit.url, id],
+    );
+    if (rows.length === 0) return false;
+
+    this.rows<{ id: string }>(
+      "DELETE FROM annotations WHERE target_id = ? AND kind = 'tag' RETURNING id",
+      [id],
+    );
+    for (const tag of normalizeTags(edit.tags)) {
+      this.insertTagSync(id, tag);
+    }
+    await this.persist();
+    return true;
   }
 
   exportBytes(): Uint8Array {

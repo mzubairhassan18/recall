@@ -49,6 +49,10 @@ export interface NewCaptureResult {
   id: string;
 }
 
+export interface OpenEditorResult {
+  windowId: number | null;
+}
+
 export type PopupRequest =
   | { type: "status" }
   | { type: "open" }
@@ -63,6 +67,16 @@ export type PopupRequest =
   | { type: "archived" }
   | { type: "tags" }
   | { type: "capture"; id: string }
+  | { type: "open-editor"; id: string }
+  | {
+      type: "update-capture";
+      id: string;
+      title: string;
+      text: string;
+      ocrText: string;
+      url: string | null;
+      tags: string[];
+    }
   | { type: "save-page" }
   | { type: "new-capture"; text: string; tags?: string[]; favorite?: boolean }
   | { type: "set-favorite"; id: string; favorite: boolean }
@@ -84,6 +98,7 @@ export type PopupResponse =
         | ArchiveResult
         | MutationResult
         | NewCaptureResult
+        | OpenEditorResult
         | { pulled: number; uploaded: number; failed: number };
     }
   | { ok: false; error: string };

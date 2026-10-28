@@ -2,10 +2,10 @@ import type { CaptureType } from "@recall/shared-types";
 import type { CaptureSummary } from "../lib/db.js";
 import type {
   ArchiveResult,
-  CaptureDetail,
   CaptureQuery,
   MutationResult,
   NewCaptureResult,
+  OpenEditorResult,
   PopupRequest,
   PopupResponse,
   StatusData,
@@ -70,18 +70,6 @@ const unlockPassphraseSubmit = $<HTMLButtonElement>("unlock-passphrase-submit");
 const unlockUsePassphrase = $<HTMLButtonElement>("unlock-use-passphrase");
 const unlockUsePin = $<HTMLButtonElement>("unlock-use-pin");
 
-const detailEl = $("detail");
-const detailTitle = $("detail-title");
-const detailMeta = $("detail-meta");
-const detailText = $("detail-text");
-const detailImage = $<HTMLImageElement>("detail-image");
-const detailFavorite = $<HTMLButtonElement>("detail-favorite");
-const detailArchive = $<HTMLButtonElement>("detail-archive");
-const detailOpen = $<HTMLButtonElement>("detail-open");
-const detailTags = $("detail-tags");
-const detailTagForm = $<HTMLFormElement>("detail-tag-form");
-const detailTagInput = $<HTMLInputElement>("detail-tag-input");
-
 const composerEl = $("composer");
 const composerForm = $<HTMLFormElement>("composer-form");
 const composerText = $<HTMLTextAreaElement>("composer-text");
@@ -103,7 +91,6 @@ let allTags: string[] = [];
 let selectionMode = false;
 const selectedIds = new Set<string>();
 let currentRows: CaptureSummary[] = [];
-let currentDetail: CaptureDetail | null = null;
 let searchTimer: number | undefined;
 let refreshTimer: number | undefined;
 let lastQuery = "";
@@ -158,7 +145,6 @@ function showPanel(panel: HTMLElement): void {
 
 function closeOverlays(): void {
   composerEl.hidden = true;
-  detailEl.hidden = true;
   archiveEl.hidden = true;
   securityEl.hidden = true;
 }
@@ -525,59 +511,10 @@ function renderResult(row: CaptureSummary, query: string): HTMLLIElement {
 
 async function openResult(row: CaptureSummary): Promise<void> {
   try {
-    const detail = await send<CaptureDetail>({ type: "capture", id: row.id });
-    detailTagInput.value = "";
-    renderDetail(detail);
-    detailEl.hidden = false;
-  } catch {
-    // The row may have been removed between render and click.
-  }
-}
-
-function renderDetail(detail: CaptureDetail): void {
-  currentDetail = detail;
-  detailTitle.textContent = detail.title || detail.text.split("\n")[0]?.slice(0, 90) || "(untitled)";
-  detailMeta.textContent = `${detail.type} · ${new Date(detail.created_at).toLocaleString()}${
-    detail.archived ? " · archived" : ""
-  }`;
-  detailText.textContent = detail.text || detail.ocr_text || "(no text)";
-  detailOpen.hidden = !detail.url;
-
-  detailFavorite.setAttribute("aria-pressed", String(detail.favorite));
-  const favoriteLabel = detailFavorite.querySelector("span");
-  if (favoriteLabel) favoriteLabel.textContent = detail.favorite ? "Favorited" : "Favorite";
-
-  const archiveLabel = detailArchive.querySelector("span");
-  if (archiveLabel) archiveLabel.textContent = detail.archived ? "Restore" : "Archive";
-  setButtonIcon(detailArchive, detail.archived ? "i-restore" : "i-archive");
-
-  if (detail.thumbnail_b64) {
-    detailImage.src = `data:image/png;base64,${detail.thumbnail_b64}`;
-    detailImage.hidden = false;
-  } else {
-    detailImage.hidden = true;
-    detailImage.removeAttribute("src");
-  }
-  renderDetailTags(detail.tags);
-}
-
-function renderDetailTags(tags: string[]): void {
-  detailTags.replaceChildren();
-  for (const tag of tags) {
-    const chip = document.createElement("span");
-    chip.className = "detail-tag";
-    const label = document.createElement("span");
-    label.textContent = tag;
-    chip.appendChild(label);
-    const remove = document.createElement("button");
-    remove.type = "button";
-    remove.className = "tag-remove";
-    remove.title = `Remove tag ${tag}`;
-    remove.setAttribute("aria-label", `Remove tag ${tag}`);
-    remove.textContent = "×";
-    remove.addEventListener("click", () => void removeTag(tag));
-    chip.appendChild(remove);
-    detailTags.appendChild(chip);
+    await send<OpenEditorResult>({ type: "open-editor", id: row.id });
+    window.close();
+  } catch (error) {
+    window.alert(messageFor(error instanceof Error ? error.message : "request-failed"));
   }
 }
 
@@ -587,30 +524,10 @@ async function toggleFavorite(row: CaptureSummary): Promise<void> {
     const result = await send<MutationResult>({ type: "set-favorite", id: row.id, favorite });
     if (!result.updated) return;
     row.favorite = favorite;
-    if (currentDetail?.id === row.id) {
-      currentDetail.favorite = favorite;
-      renderDetail(currentDetail);
-    }
     await refreshStatus();
     if (!archiveEl.hidden) await refreshArchive();
   } catch {
     // Keep the previous state if the write fails.
-  }
-}
-
-async function removeTag(tag: string): Promise<void> {
-  if (!currentDetail) return;
-  try {
-    const tags = await send<string[]>({
-      type: "remove-tag",
-      id: currentDetail.id,
-      tag,
-    });
-    currentDetail.tags = tags;
-    renderDetailTags(tags);
-    await refresh();
-  } catch {
-    // Keep the previous tags if the write fails.
   }
 }
 
@@ -709,10 +626,6 @@ async function restoreCapture(id: string, button: HTMLButtonElement): Promise<vo
   button.disabled = true;
   try {
     await send<ArchiveResult>({ type: "restore-many", ids: [id] });
-    if (currentDetail?.id === id) {
-      currentDetail.archived = false;
-      renderDetail(currentDetail);
-    }
     await refreshArchive();
     await refreshStatus();
   } catch {
@@ -960,82 +873,6 @@ composerEl.addEventListener("click", (event) => {
 });
 
 /* ------------------------------------------------------------------ */
-/* detail                                                              */
-/* ------------------------------------------------------------------ */
-
-$("detail-close").addEventListener("click", () => {
-  detailEl.hidden = true;
-});
-
-detailEl.addEventListener("click", (event) => {
-  if (event.target === detailEl) detailEl.hidden = true;
-});
-
-detailOpen.addEventListener("click", async () => {
-  if (!currentDetail?.url) return;
-  await chrome.tabs.create({ url: currentDetail.url });
-  window.close();
-});
-
-detailFavorite.addEventListener("click", async () => {
-  if (!currentDetail) return;
-  const favorite = !currentDetail.favorite;
-  try {
-    const result = await send<MutationResult>({
-      type: "set-favorite",
-      id: currentDetail.id,
-      favorite,
-    });
-    if (!result.updated) return;
-    currentDetail.favorite = favorite;
-    renderDetail(currentDetail);
-    await refreshStatus();
-  } catch {
-    // Keep the previous state if the write fails.
-  }
-});
-
-detailArchive.addEventListener("click", async () => {
-  if (!currentDetail) return;
-  const archived = !currentDetail.archived;
-  try {
-    const result = await send<MutationResult>({
-      type: "set-archived",
-      id: currentDetail.id,
-      archived,
-    });
-    if (!result.updated) return;
-    currentDetail.archived = archived;
-    if (archived) detailEl.hidden = true;
-    else renderDetail(currentDetail);
-    await refreshStatus();
-    if (!archiveEl.hidden) await refreshArchive();
-  } catch {
-    // Keep the previous state if the write fails.
-  }
-});
-
-detailTagForm.addEventListener("submit", async (event) => {
-  event.preventDefault();
-  if (!currentDetail) return;
-  const tag = detailTagInput.value.trim();
-  if (!tag) return;
-  try {
-    const tags = await send<string[]>({
-      type: "add-tag",
-      id: currentDetail.id,
-      tag,
-    });
-    currentDetail.tags = tags;
-    renderDetailTags(tags);
-    detailTagInput.value = "";
-    await refresh();
-  } catch {
-    // Keep the previous tags if the write fails.
-  }
-});
-
-/* ------------------------------------------------------------------ */
 /* archive overlay                                                     */
 /* ------------------------------------------------------------------ */
 
@@ -1138,8 +975,6 @@ document.addEventListener("keydown", (event) => {
     closeSecurity();
   } else if (!composerEl.hidden) {
     closeComposer();
-  } else if (!detailEl.hidden) {
-    detailEl.hidden = true;
   } else if (!archiveEl.hidden) {
     archiveEl.hidden = true;
   } else if (selectionMode) {

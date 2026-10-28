@@ -70,6 +70,18 @@ interface RecallDao {
     @Query("UPDATE captures SET archived = :archived WHERE id = :id")
     suspend fun setArchived(id: String, archived: Int)
 
+    @Query(
+        "UPDATE captures SET title = :title, text = :text, url = :url, " +
+            "ocr_text = :ocrText, synced = 0 WHERE id = :id",
+    )
+    suspend fun updateContent(
+        id: String,
+        title: String?,
+        text: String?,
+        url: String?,
+        ocrText: String?,
+    ): Int
+
     @Query("UPDATE captures SET archived = 1 WHERE id IN (:ids)")
     suspend fun archiveMany(ids: List<String>): Int
 
@@ -101,4 +113,7 @@ interface RecallDao {
 
     @Query("DELETE FROM annotations WHERE target_id = :id AND kind = 'tag' AND value = :value")
     suspend fun deleteTag(id: String, value: String)
+
+    @Query("DELETE FROM annotations WHERE target_id = :id AND kind = 'tag'")
+    suspend fun deleteTags(id: String)
 }

@@ -178,6 +178,50 @@ describe("local metadata: tags, favorites, archive", () => {
     local.close();
   });
 
+  it("updates editable content, replaces tags, and queues another sync", async () => {
+    const local = await CaptureStore.open(new MemoryPersistence());
+    await local.insertCapture({
+      id: "edit-me",
+      created_at: 1_000,
+      type: "text",
+      title: "Old title",
+      text: "old body",
+      tags: ["old", "keep"],
+      synced: 1,
+    });
+
+    expect(
+      await local.updateCapture("edit-me", {
+        title: "New title",
+        text: "new body",
+        ocr_text: null,
+        url: "https://example.com/edited",
+        tags: ["Fresh", " keep ", "fresh"],
+      }),
+    ).toBe(true);
+
+    expect(local.getCapture("edit-me")).toMatchObject({
+      title: "New title",
+      text: "new body",
+      ocr_text: null,
+      url: "https://example.com/edited",
+      synced: 0,
+    });
+    expect(local.tagsFor("edit-me")).toEqual(["fresh", "keep"]);
+    expect(local.listUnsynced().map((row) => row.id)).toContain("edit-me");
+    expect((await local.adapters.ftsQuery('"new"', 5)).map((hit) => hit.id)).toContain("edit-me");
+    expect(
+      await local.updateCapture("missing", {
+        title: "No",
+        text: null,
+        ocr_text: null,
+        url: null,
+        tags: [],
+      }),
+    ).toBe(false);
+    local.close();
+  });
+
   it("migrates a legacy database without favorite or archived columns", async () => {
     const sqlite = await initSqliteOnce();
     const legacy = new sqlite.oo1.DB(":memory:", "c");

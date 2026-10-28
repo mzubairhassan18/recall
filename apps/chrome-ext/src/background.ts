@@ -23,7 +23,13 @@ import {
 import { RelayClient } from "./lib/relay-client.js";
 import { RELAY_SECRET, RELAY_URL } from "./lib/relay-defaults.js";
 import { syncNow } from "./lib/sync.js";
-import type { CaptureQuery, PopupRequest, PopupResponse, StatusData } from "./lib/messages.js";
+import type {
+  CaptureDetail,
+  CaptureQuery,
+  PopupRequest,
+  PopupResponse,
+  StatusData,
+} from "./lib/messages.js";
 
 const SYNC_ALARM = "recall-sync";
 const MENU_SELECTION = "recall-save-selection";
@@ -423,6 +429,29 @@ async function timeline(filters: CaptureQuery): Promise<CaptureSummary[]> {
   return store.timeline({ ...filterFromQuery(filters), limit: 200 });
 }
 
+function detailFor(store: CaptureStore, id: string): CaptureDetail {
+  const row = store.getCapture(id);
+  if (!row) throw new Error("not-found");
+  return {
+    id: row.id,
+    title: row.title ?? "",
+    text: row.text ?? "",
+    ocr_text: row.ocr_text ?? "",
+    url: row.url,
+    type: row.type,
+    created_at: row.created_at,
+    favorite: row.favorite === 1,
+    archived: row.archived === 1,
+    tags: store.tagsFor(row.id),
+    ...(row.thumbnail ? { thumbnail_b64: bytesToBase64(row.thumbnail) } : {}),
+  };
+}
+
+function editable(value: string | null): string | null {
+  const trimmed = value?.trim();
+  return trimmed ? trimmed : null;
+}
+
 async function saveActivePage(): Promise<StatusData> {
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
   if (!tab?.url) throw new Error("no-active-tab");
@@ -461,23 +490,32 @@ async function handleRequest(request: PopupRequest): Promise<unknown> {
       return (await getStore()).archived();
     case "tags":
       return (await getStore()).allTags();
-    case "capture": {
+    case "capture":
+      return detailFor(await getStore(), request.id);
+    case "open-editor": {
       const store = await getStore();
-      const row = store.getCapture(request.id);
-      if (!row) throw new Error("not-found");
-      return {
-        id: row.id,
-        title: row.title ?? "",
-        text: row.text ?? "",
-        ocr_text: row.ocr_text ?? "",
-        url: row.url,
-        type: row.type,
-        created_at: row.created_at,
-        favorite: row.favorite === 1,
-        archived: row.archived === 1,
-        tags: store.tagsFor(row.id),
-        ...(row.thumbnail ? { thumbnail_b64: bytesToBase64(row.thumbnail) } : {}),
-      };
+      if (!store.hasCapture(request.id)) throw new Error("not-found");
+      const created = await chrome.windows.create({
+        url: chrome.runtime.getURL(`editor.html?id=${encodeURIComponent(request.id)}`),
+        type: "popup",
+        width: 560,
+        height: 760,
+      });
+      if (!created) throw new Error("request-failed");
+      return { windowId: created.id ?? null };
+    }
+    case "update-capture": {
+      const store = await getStore();
+      const updated = await store.updateCapture(request.id, {
+        title: editable(request.title),
+        text: editable(request.text),
+        ocr_text: editable(request.ocrText),
+        url: editable(request.url),
+        tags: request.tags,
+      });
+      if (!updated) throw new Error("not-found");
+      scheduleSync();
+      return detailFor(store, request.id);
     }
     case "save-page":
       return saveActivePage();

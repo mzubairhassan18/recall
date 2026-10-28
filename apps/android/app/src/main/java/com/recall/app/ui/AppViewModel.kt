@@ -14,7 +14,6 @@ import com.recall.app.capture.ScreenshotScanWorker
 import com.recall.app.capture.payloadForText
 import com.recall.app.config.AppConfig
 import com.recall.app.config.RelayDefaults
-import com.recall.app.data.CaptureDetail
 import com.recall.app.security.BiometricVault
 import com.recall.app.security.PinCheck
 import com.recall.app.security.PinVault
@@ -48,9 +47,10 @@ data class RecallUiState(
     val typeFilter: String? = null,
     val domain: String = "",
     val results: List<SearchResult> = emptyList(),
-    val detail: CaptureDetail? = null,
     val error: String? = null,
     val notice: String? = null,
+    val toastMessage: String? = null,
+    val toastId: Long = 0L,
     val settingsOpen: Boolean = false,
     val localOnly: Boolean = true,
     val relayUrl: String? = null,
@@ -73,7 +73,6 @@ data class RecallUiState(
     val archivedOpen: Boolean = false,
     val archivedResults: List<SearchResult> = emptyList(),
     val archivedCount: Int = 0,
-    val composerOpen: Boolean = false,
 )
 
 class AppViewModel(application: Application) : AndroidViewModel(application) {
@@ -371,14 +370,12 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
                 locked = true,
                 count = 0,
                 results = emptyList(),
-                detail = null,
                 settingsOpen = false,
                 syncing = false,
                 selectionMode = false,
                 selectedIds = emptySet(),
                 archivedOpen = false,
                 archivedResults = emptyList(),
-                composerOpen = false,
                 error = null,
                 notice = null,
             )
@@ -513,52 +510,11 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    fun openComposer() {
-        _state.update {
-            it.copy(
-                composerOpen = true,
-                selectionMode = false,
-                selectedIds = emptySet(),
-                error = null,
-                notice = null,
-            )
-        }
-    }
-
-    fun closeComposer() {
-        _state.update { it.copy(composerOpen = false) }
-    }
-
-    fun saveQuickCapture(text: String, tags: String, favorite: Boolean) {
-        val clean = text.trim()
-        if (clean.isEmpty()) {
-            _state.update { it.copy(error = "Write something first.") }
-            return
-        }
-        val context = getApplication<Application>()
-        viewModelScope.launch {
-            _state.update { it.copy(error = null) }
-            val saved = CaptureSaver.save(
-                context = context,
-                payload = payloadForText(clean, null),
-                favorite = favorite,
-                tags = parseTags(tags),
-            )
-            if (saved) {
-                _state.update { it.copy(composerOpen = false, notice = "Saved to Recall.") }
-                refreshInternal()
-            } else {
-                _state.update { it.copy(error = "Could not save that capture.") }
-            }
-        }
-    }
-
     fun startSelection(id: String? = null) {
         _state.update {
             it.copy(
                 selectionMode = true,
                 selectedIds = if (id == null) emptySet() else setOf(id),
-                composerOpen = false,
                 error = null,
             )
         }
@@ -588,24 +544,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
                 it.copy(
                     selectionMode = false,
                     selectedIds = emptySet(),
-                    detail = null,
                     notice = if (count > 0) "Archived $count capture(s)." else "Nothing archived.",
-                )
-            }
-            RecallWidgetProvider.refresh(getApplication())
-            refreshInternal()
-        }
-    }
-
-    fun archiveCapture(id: String) {
-        viewModelScope.launch {
-            val repository = Session.repository() ?: return@launch
-            repository.setArchived(id, true)
-            _state.update {
-                it.copy(
-                    detail = null,
-                    selectedIds = it.selectedIds - id,
-                    notice = "Moved to archive.",
                 )
             }
             RecallWidgetProvider.refresh(getApplication())
@@ -617,12 +556,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             val repository = Session.repository() ?: return@launch
             repository.setArchived(id, false)
-            _state.update {
-                it.copy(
-                    detail = null,
-                    notice = "Restored from archive.",
-                )
-            }
+            _state.update { it.copy(notice = "Restored from archive.") }
             RecallWidgetProvider.refresh(getApplication())
             refreshInternal()
         }
@@ -632,38 +566,10 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             val repository = Session.repository() ?: return@launch
             val current = _state.value
-            val isFavorite = current.detail?.takeIf { it.id == id }?.favorite
-                ?: current.results.firstOrNull { it.id == id }?.favorite
+            val isFavorite = current.results.firstOrNull { it.id == id }?.favorite
                 ?: current.archivedResults.firstOrNull { it.id == id }?.favorite
                 ?: false
             repository.setFavorite(id, !isFavorite)
-            val updatedDetail = current.detail?.takeIf { it.id == id }?.let { repository.detail(id) }
-            _state.update { it.copy(detail = updatedDetail ?: it.detail) }
-            refreshInternal()
-        }
-    }
-
-    fun addTag(id: String, value: String) {
-        if (value.isBlank()) return
-        viewModelScope.launch {
-            val repository = Session.repository() ?: return@launch
-            repository.addTag(id, value)
-            val current = _state.value
-            if (current.detail?.id == id) {
-                _state.update { it.copy(detail = repository.detail(id)) }
-            }
-            refreshInternal()
-        }
-    }
-
-    fun removeTag(id: String, value: String) {
-        viewModelScope.launch {
-            val repository = Session.repository() ?: return@launch
-            repository.removeTag(id, value)
-            val current = _state.value
-            if (current.detail?.id == id) {
-                _state.update { it.copy(detail = repository.detail(id)) }
-            }
             refreshInternal()
         }
     }
@@ -673,10 +579,8 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
             it.copy(
                 archivedOpen = true,
                 settingsOpen = false,
-                detail = null,
                 selectionMode = false,
                 selectedIds = emptySet(),
-                composerOpen = false,
                 error = null,
             )
         }
@@ -684,7 +588,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun closeArchived() {
-        _state.update { it.copy(archivedOpen = false, detail = null) }
+        _state.update { it.copy(archivedOpen = false) }
         viewModelScope.launch { refreshInternal() }
     }
 
@@ -693,24 +597,6 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         val results = runCatching { repository.archived() }.getOrDefault(emptyList())
         val count = runCatching { repository.countArchived() }.getOrDefault(results.size)
         _state.update { it.copy(archivedResults = results, archivedCount = count) }
-    }
-
-    private fun parseTags(value: String): List<String> =
-        value.split(',')
-            .map { it.trim().lowercase(Locale.ROOT) }
-            .filter { it.isNotEmpty() }
-            .distinct()
-            .take(8)
-
-    fun openDetail(id: String) {
-        viewModelScope.launch {
-            val detail = Session.repository()?.detail(id) ?: return@launch
-            _state.update { it.copy(detail = detail) }
-        }
-    }
-
-    fun closeDetail() {
-        _state.update { it.copy(detail = null) }
     }
 
     fun saveClipboard() {
@@ -765,7 +651,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         val repository = Session.repository() ?: return
         val stored = config.load()
         if (stored.localOnly) {
-            _state.update { it.copy(notice = "Local-only mode: no relay configured.") }
+            pushToast("Local-only mode: no relay configured.")
             return
         }
         val rawKey = Session.rawKey() ?: return
@@ -773,14 +659,11 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
             _state.update { it.copy(syncing = true, error = null, notice = null) }
             try {
                 val report = SyncEngine(config, repository, rawKey).sync()
-                _state.update {
-                    it.copy(
-                        syncing = false,
-                        lastSyncAt = config.lastSyncAt,
-                        notice = "Synced: ${report.pulled} in, ${report.pushed} out" +
-                            if (report.failed > 0) " (${report.failed} failed)" else "",
-                    )
-                }
+                _state.update { it.copy(syncing = false, lastSyncAt = config.lastSyncAt) }
+                pushToast(
+                    "Synced: ${report.pulled} in, ${report.pushed} out" +
+                        if (report.failed > 0) " (${report.failed} failed)" else "",
+                )
                 refreshInternal()
             } catch (error: Exception) {
                 _state.update { it.copy(syncing = false, error = error.message ?: "sync-failed") }
@@ -795,8 +678,6 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
             it.copy(
                 settingsOpen = true,
                 archivedOpen = false,
-                composerOpen = false,
-                detail = null,
                 selectionMode = false,
                 selectedIds = emptySet(),
                 pinConfigured = pinVault.hasPin,
@@ -955,6 +836,14 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
 
     fun clearMessages() {
         _state.update { it.copy(error = null, notice = null) }
+    }
+
+    fun clearToast() {
+        _state.update { it.copy(toastMessage = null) }
+    }
+
+    private fun pushToast(message: String) {
+        _state.update { it.copy(toastMessage = message, toastId = it.toastId + 1) }
     }
 
     private fun loadSynonyms(context: Context): SynonymIndex = runCatching {

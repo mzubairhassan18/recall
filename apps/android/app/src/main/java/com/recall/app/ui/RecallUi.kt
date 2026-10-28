@@ -1,5 +1,6 @@
 package com.recall.app.ui
 
+import android.content.Intent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -48,10 +49,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.recall.app.CaptureEditorActivity
 
 @Composable
 fun RecallRoot(
@@ -63,6 +66,20 @@ fun RecallRoot(
     onRequestScreenshotPermissions: () -> Unit,
     onOpenUsageAccess: () -> Unit,
 ) {
+    val context = LocalContext.current
+    val openCapture: (String) -> Unit = { id ->
+        context.startActivity(
+            Intent(context, CaptureEditorActivity::class.java)
+                .putExtra(CaptureEditorActivity.EXTRA_CAPTURE_ID, id),
+        )
+    }
+    val openNewCapture: () -> Unit = {
+        context.startActivity(
+            Intent(context, CaptureEditorActivity::class.java)
+                .putExtra(CaptureEditorActivity.EXTRA_NEW_CAPTURE, true),
+        )
+    }
+
     AuroraBackground {
         when {
             !state.configured -> SetupScreen(
@@ -85,18 +102,16 @@ fun RecallRoot(
                 onRequestScreenshotPermissions = onRequestScreenshotPermissions,
                 onOpenUsageAccess = onOpenUsageAccess,
             )
-            state.archivedOpen -> ArchivedScreen(state = state, viewModel = viewModel)
-            else -> MainScreen(state, viewModel)
-        }
-        state.detail?.let { detail ->
-            DetailDialog(
-                detail = detail,
-                onDismiss = viewModel::closeDetail,
-                onToggleFavorite = { viewModel.toggleFavorite(detail.id) },
-                onAddTag = { tag -> viewModel.addTag(detail.id, tag) },
-                onRemoveTag = { tag -> viewModel.removeTag(detail.id, tag) },
-                onArchive = { viewModel.archiveCapture(detail.id) },
-                onRestore = { viewModel.restoreCapture(detail.id) },
+            state.archivedOpen -> ArchivedScreen(
+                state = state,
+                viewModel = viewModel,
+                onOpenCapture = openCapture,
+            )
+            else -> MainScreen(
+                state = state,
+                viewModel = viewModel,
+                onOpenCapture = openCapture,
+                onNewCapture = openNewCapture,
             )
         }
     }

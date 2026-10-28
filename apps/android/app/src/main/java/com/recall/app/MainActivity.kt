@@ -42,7 +42,7 @@ class MainActivity : FragmentActivity() {
                         PendingShare.take()?.let(viewModel::savePendingShare)
                         if (pendingNewCapture) {
                             pendingNewCapture = false
-                            viewModel.openComposer()
+                            openNewCaptureEditor()
                         }
                     }
                 }
@@ -86,7 +86,7 @@ class MainActivity : FragmentActivity() {
         intent.removeExtra(EXTRA_NEW_CAPTURE)
         if (Session.isUnlocked()) {
             PendingShare.take()?.let(viewModel::savePendingShare)
-            if (wantsNewCapture) viewModel.openComposer()
+            if (wantsNewCapture) openNewCaptureEditor()
         } else if (wantsNewCapture) {
             pendingNewCapture = true
         }
@@ -95,6 +95,13 @@ class MainActivity : FragmentActivity() {
     override fun onResume() {
         super.onResume()
         viewModel.refresh()
+    }
+
+    private fun openNewCaptureEditor() {
+        startActivity(
+            Intent(this, CaptureEditorActivity::class.java)
+                .putExtra(CaptureEditorActivity.EXTRA_NEW_CAPTURE, true),
+        )
     }
 
     private fun authenticate() {
